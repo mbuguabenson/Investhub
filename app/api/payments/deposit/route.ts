@@ -1,12 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 import { createTransaction } from "@/lib/db";
-
-// Pesapal V3 Config (Should be in env)
-const PESAPAL_URL =
-  process.env.NODE_ENV === "production"
-    ? "https://pay.pesapal.com/v3"
-    : "https://cybqa.pesapal.com/pesapalv3";
+import { getAccessToken, registerIPN, submitOrder } from "@/lib/pesapal";
 
 export async function POST(request: NextRequest) {
   try {
@@ -23,7 +18,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid amount" }, { status: 400 });
     }
 
-    // 1. Create a pending transaction in our DB first
+    // 1. Create a pending transaction in our DB
     const transaction = await createTransaction(
       user.id,
       "deposit",
@@ -38,36 +33,33 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 2. Prepare Pesapal SubmitOrderRequest structure
-    // In a real implementation, you'd fetch the Bearer Token first
-    const pesapalOrder = {
-      id: transaction.id, // Our internal reference
-      currency: "KES",
+    // 2. Automate Pesapal Flow
+    const token = await getAccessToken();
+
+    // Check if we have an IPN ID in env, otherwise register one dynamically
+    let ipnId = process.env.PESAPAL_IPN_ID;
+    if (!ipnId) {
+      console.log("No PESAPAL_IPN_ID found, registering dynamically...");
+      ipnId = await registerIPN(token);
+    }
+
+    // 3. Submit Order to Pesapal
+    const result = await submitOrder(token, ipnId!, {
+      id: transaction.id,
       amount: amount,
       description: `InvestHub Deposit - ${user.email}`,
-      callback_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/wallet?status=callback`,
-      notification_id: process.env.PESAPAL_IPN_ID, // Pre-registered IPN ID
-      billing_address: {
-        email_address: user.email,
-        phone_number: "", // Can be fetched from profile
-        first_name: "",
-        last_name: "",
-      },
-    };
-
-    // 3. For now, we simulate the Pesapal response
-    // In production, you'd POST to `${PESAPAL_URL}/api/Transactions/SubmitOrderRequest`
-    const simulatedRedirectUrl = `${PESAPAL_URL}/Transactions/SubmitOrderRequest?id=${transaction.id}`;
+      email: user.email!,
+    });
 
     return NextResponse.json({
       success: true,
-      orderTrackingId: `SIM-${transaction.id.slice(0, 8)}`,
-      redirectUrl: simulatedRedirectUrl,
+      orderTrackingId: result.order_tracking_id,
+      redirectUrl: result.redirect_url,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Pesapal Deposit Error:", error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: error.message || "Internal server error" },
       { status: 500 },
     );
   }

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
+import { getAccessToken, getTransactionStatus } from "@/lib/pesapal";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -21,9 +22,14 @@ export async function GET(request: NextRequest) {
       processed: false,
     });
 
-    // 2. Fetch transaction status from Pesapal (Simulated status check)
-    // In production, call GET `${PESAPAL_URL}/api/Transactions/GetTransactionStatus?orderTrackingId=${orderTrackingId}`
-    const isSuccess = true; // Simulation
+    // 2. Fetch real transaction status from Pesapal
+    const token = await getAccessToken();
+    const statusData = await getTransactionStatus(token, orderTrackingId);
+
+    // Pesapal V3 status: 1 = Completed, 0 = Failed, 2 = Pending
+    const isSuccess =
+      statusData.payment_status_description === "Completed" ||
+      statusData.status_code === 1;
 
     if (isSuccess) {
       // 3. Find our transaction
@@ -64,22 +70,20 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Pesapal V3 IPN expects a specific response structure or 200 OK
     return NextResponse.json({
       orderNotificationId: orderTrackingId,
       merchantReference: merchantReference,
       status: 200,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Pesapal IPN Error:", error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: error.message || "Internal server error" },
       { status: 500 },
     );
   }
 }
 
-// Keep POST for other webhook types if needed
 export async function POST(request: NextRequest) {
   return GET(request);
 }
