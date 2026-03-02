@@ -42,7 +42,7 @@ export default function LoginPage() {
       const { error: googleError } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
+          redirectTo: `${window.location.origin}/api/auth/callback`,
         },
       })
       if (googleError) throw googleError
@@ -73,7 +73,11 @@ export default function LoginPage() {
       })
 
       if (loginError) {
-        setError(loginError.message)
+        if (loginError.message.includes('Email not confirmed')) {
+          setError('Please confirm your email address before logging in. Check your inbox for the verification link.')
+        } else {
+          setError(loginError.message)
+        }
         setLoading(false)
         return
       }
