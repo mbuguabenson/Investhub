@@ -136,13 +136,13 @@ export function TransferModal({ isOpen, onClose }: TransferModalProps) {
               <div className="space-y-4">
                 <Label className="text-xs font-bold text-white/40 px-1 uppercase tracking-wider text-center block">Amount to Transfer</Label>
                 <div className="relative">
-                  <span className="absolute left-6 top-1/2 -translate-y-1/2 text-3xl font-bold text-white/20">$</span>
+                  <span className="absolute left-6 top-1/2 -translate-y-1/2 text-2xl font-bold text-white/20">KES</span>
                   <Input
                     type="number"
                     placeholder="0.00"
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
-                    className="h-24 pl-12 pr-6 text-5xl font-bold bg-white/5 border-none rounded-[32px] focus-visible:ring-primary/50 text-center"
+                    className="h-24 pl-20 pr-6 text-4xl font-bold bg-white/5 border-none rounded-[32px] focus-visible:ring-primary/50 text-center"
                   />
                 </div>
               </div>
@@ -169,7 +169,7 @@ export function TransferModal({ isOpen, onClose }: TransferModalProps) {
                 <p className="text-white/40">Successfully sent to <span className="text-white font-bold">{recipient.name}</span></p>
               </div>
               <div className="text-4xl font-bold text-white py-4">
-                -${parseFloat(amount).toLocaleString()}
+                -KES {parseFloat(amount).toLocaleString()}
               </div>
               <Button 
                 onClick={resetAndClose}

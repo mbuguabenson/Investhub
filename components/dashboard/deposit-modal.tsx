@@ -18,7 +18,9 @@ import {
   Building2, 
   CheckCircle2, 
   ChevronRight,
-  ArrowLeft
+  ArrowLeft,
+  Loader2,
+  AlertCircle
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -34,20 +36,48 @@ export function DepositModal({ isOpen, onClose }: DepositModalProps) {
   const [step, setStep] = useState<Step>('method')
   const [method, setMethod] = useState<Method | null>(null)
   const [amount, setAmount] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
   const handleMethodSelect = (m: Method) => {
     setMethod(m)
     setStep('amount')
   }
 
-  const handleDeposit = () => {
-    setStep('success')
+  const handleDeposit = async () => {
+    if (!amount || !method) return
+    
+    setLoading(true)
+    setError('')
+    try {
+      const response = await fetch('/api/payments/deposit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount: parseFloat(amount), method })
+      })
+      
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error || 'Failed to initiate deposit')
+      
+      // Pesapal Redirect
+      if (data.redirectUrl) {
+        window.location.href = data.redirectUrl
+      } else {
+        setStep('success')
+      }
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
   }
 
   const resetAndClose = () => {
     setStep('method')
     setMethod(null)
     setAmount('')
+    setError('')
+    setLoading(false)
     onClose()
   }
 
@@ -161,10 +191,17 @@ export function DepositModal({ isOpen, onClose }: DepositModalProps) {
               </div>
               <Button 
                 onClick={handleDeposit}
+                disabled={loading}
                 className="w-full h-14 bg-gradient-bineo rounded-2xl font-bold text-white text-lg"
               >
-                Confirm Deposit
+                {loading ? <Loader2 className="animate-spin" /> : 'Confirm Deposit'}
               </Button>
+               {error && (
+                <div className="mt-4 p-3 bg-red-500/10 border border-red-500/20 rounded-xl flex gap-2 animate-in fade-in zoom-in">
+                  <AlertCircle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
+                  <p className="text-red-500 text-[10px] font-black uppercase tracking-widest leading-relaxed">{error}</p>
+                </div>
+              )}
             </div>
           )}
 

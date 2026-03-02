@@ -51,6 +51,13 @@ export function WalletCard({ balance, currency = 'KES', onDeposit, onTransfer }:
         <Button 
           variant="outline" 
           className="flex-1 glass border-white/20 text-white hover:bg-white/10 rounded-2xl h-12 text-[10px] font-black uppercase tracking-widest"
+          onClick={() => (window as any).dispatchWithdrawal?.()}
+        >
+          <ArrowDownLeft className="w-4 h-4 mr-2" /> Withdraw
+        </Button>
+        <Button 
+          variant="outline" 
+          className="flex-1 glass border-white/20 text-white hover:bg-white/10 rounded-2xl h-12 text-[10px] font-black uppercase tracking-widest"
           onClick={onTransfer}
         >
           <ArrowUpRight className="w-4 h-4 mr-2" /> Transfer

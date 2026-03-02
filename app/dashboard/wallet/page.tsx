@@ -1,14 +1,14 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { 
-  Plus, 
-  ArrowUpRight, 
-  Wallet, 
-  CreditCard, 
-  Smartphone, 
+import {
+  Plus,
+  ArrowUpRight,
+  Wallet,
+  CreditCard,
+  Smartphone,
   Building2,
   Copy,
   Check
@@ -16,13 +16,45 @@ import {
 import { WalletCard } from '@/components/dashboard/wallet-card'
 import { DepositModal } from '@/components/dashboard/deposit-modal'
 import { TransferModal } from '@/components/dashboard/transfer-modal'
+import { WalletWithdrawalModal } from '@/components/dashboard/wallet-withdrawal-modal'
 import { useTestMode } from '@/hooks/use-test-mode'
+import { supabase } from '@/lib/supabase'
+import { getUserProfile } from '@/lib/db'
+import type { UserProfile } from '@/lib/database.types'
 
 export default function WalletPage() {
   const { isTestMode } = useTestMode()
   const [isDepositOpen, setIsDepositOpen] = useState(false)
   const [isTransferOpen, setIsTransferOpen] = useState(false)
+  const [isWithdrawOpen, setIsWithdrawOpen] = useState(false)
+  const [profile, setProfile] = useState<UserProfile | null>(null)
   const [copied, setCopied] = useState(false)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    // Add global listener for withdrawal button in WalletCard
+    (window as any).dispatchWithdrawal = () => setIsWithdrawOpen(true)
+
+    const fetchProfile = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user) {
+          const profileData = await getUserProfile(user.id)
+          setProfile(profileData)
+        }
+      } catch (error) {
+        console.error('Error fetching profile:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchProfile()
+
+    return () => {
+      delete (window as any).dispatchWithdrawal
+    }
+  }, [])
 
   const accountId = 'IH-7782-9910-4589'
 
@@ -43,8 +75,8 @@ export default function WalletPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         <div className="lg:col-span-7 space-y-8">
-          <WalletCard 
-            balance={isTestMode ? 42982.00 : 0} 
+          <WalletCard
+            balance={isTestMode ? 42982.00 : (profile?.account_balance || 0)}
             onDeposit={() => setIsDepositOpen(true)}
             onTransfer={() => setIsTransferOpen(true)}
           />
@@ -57,7 +89,7 @@ export default function WalletPage() {
                   <p className="text-muted-foreground/60 text-[10px] uppercase font-black tracking-[0.2em]">Account Number</p>
                   <p className="text-lg font-black mt-1 text-foreground font-mono tracking-wider">{accountId}</p>
                 </div>
-                <button 
+                <button
                   onClick={handleCopy}
                   className="p-3 hover:bg-muted rounded-xl transition-colors text-primary"
                 >
@@ -126,6 +158,11 @@ export default function WalletPage() {
 
       <DepositModal isOpen={isDepositOpen} onClose={() => setIsDepositOpen(false)} />
       <TransferModal isOpen={isTransferOpen} onClose={() => setIsTransferOpen(false)} />
+      <WalletWithdrawalModal
+        isOpen={isWithdrawOpen}
+        onClose={() => setIsWithdrawOpen(false)}
+        balance={isTestMode ? 42982.00 : (profile?.account_balance || 0)}
+      />
     </div>
   )
 }
