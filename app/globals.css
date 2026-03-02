@@ -1,0 +1,144 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+:root {
+  /* Light Mode Variables - High Contrast */
+  --background: oklch(0.99 0 0);
+  --foreground: oklch(0.15 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.15 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.15 0 0);
+  --primary: oklch(0.65 0.25 45);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.6 0.25 270);
+  --secondary-foreground: oklch(0.99 0 0);
+  --muted: oklch(0.95 0 0);
+  --muted-foreground: oklch(0.45 0 0);
+  --accent: oklch(0.95 0 0);
+  --accent-foreground: oklch(0.15 0 0);
+  --destructive: oklch(0.6 0.23 25);
+  --destructive-foreground: oklch(0.99 0 0);
+  --border: oklch(0.9 0 0);
+  --input: oklch(0.9 0 0);
+  --ring: oklch(0.65 0.25 45);
+  --radius: 1.25rem;
+
+  /* Custom Gradients - Optimized for Light Mode */
+  --gradient-bineo: linear-gradient(
+    135deg,
+    oklch(0.65 0.25 45) 0%,
+    oklch(0.5 0.25 35) 100%
+  );
+  --gradient-purple: linear-gradient(
+    135deg,
+    oklch(0.6 0.25 270) 0%,
+    oklch(0.45 0.25 280) 100%
+  );
+}
+
+.dark {
+  /* Dark Mode Variables - Deep Premium */
+  --background: oklch(0.08 0 0);
+  --foreground: oklch(0.98 0 0);
+  --card: oklch(0.12 0.01 250 / 0.8);
+  --card-foreground: oklch(0.98 0 0);
+  --popover: oklch(0.11 0.01 250);
+  --popover-foreground: oklch(0.98 0 0);
+  --primary: oklch(0.75 0.2 45); 
+  --primary-foreground: oklch(0.08 0 0);
+  --secondary: oklch(0.65 0.25 270);
+  --secondary-foreground: oklch(0.98 0 0);
+  --muted: oklch(0.15 0.02 250);
+  --muted-foreground: oklch(0.6 0.02 250);
+  --accent: oklch(0.15 0.02 250);
+  --accent-foreground: oklch(0.98 0 0);
+  --destructive: oklch(0.55 0.22 25);
+  --destructive-foreground: oklch(0.98 0 0);
+  --border: oklch(0.18 0.02 250);
+  --input: oklch(0.18 0.02 250);
+  --ring: oklch(0.75 0.2 45);
+
+  --gradient-bineo: linear-gradient(
+    135deg,
+    oklch(0.75 0.2 45) 0%,
+    oklch(0.4 0.2 30) 100%
+  );
+}
+
+@theme {
+  --font-sans: var(--font-outfit), "Inter", sans-serif;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --radius-lg: 1.5rem;
+  --radius-xl: 2rem;
+
+  /* Custom Utilities */
+  --animate-float: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground selection:bg-primary/30;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+}
+
+@layer utilities {
+  /* Standard Premium Card */
+  .glass {
+    @apply bg-card/60 backdrop-blur-xl border border-border/40 shadow-xl dark:bg-card/40 dark:border-border/10 dark:shadow-2xl;
+  }
+
+  .glass-dark {
+    @apply bg-background/40 backdrop-blur-2xl border border-border/20 shadow-2xl;
+  }
+
+  .glass-morphism {
+    @apply bg-background/60 backdrop-blur-md border border-border/20 shadow-lg;
+  }
+
+  .text-gradient-bineo {
+    @apply bg-clip-text text-transparent bg-(image:--gradient-bineo);
+  }
+  .bg-gradient-bineo {
+    @apply bg-(image:--gradient-bineo);
+  }
+  .bg-gradient-purple {
+    @apply bg-(image:--gradient-purple);
+  }
+  .card-premium {
+    @apply bg-card/80 backdrop-blur-2xl border border-border/50 shadow-xl rounded-4xl p-6 transition-all duration-500 dark:bg-card/40 dark:border-border/5 dark:shadow-2xl hover:border-primary/30;
+  }
+}
