@@ -3,7 +3,7 @@ import { supabase } from "@/lib/supabase";
 
 export async function POST(request: NextRequest) {
   try {
-    const { amount, reason } = await request.json();
+    const { amount, reason, phoneNumber } = await request.json();
     const {
       data: { user },
     } = await supabase.auth.getUser();
@@ -14,6 +14,13 @@ export async function POST(request: NextRequest) {
 
     if (!amount || isNaN(amount) || amount <= 0) {
       return NextResponse.json({ error: "Invalid amount" }, { status: 400 });
+    }
+
+    if (!phoneNumber) {
+      return NextResponse.json(
+        { error: "Phone number is required for withdrawal" },
+        { status: 400 },
+      );
     }
 
     // Check balance
@@ -36,7 +43,7 @@ export async function POST(request: NextRequest) {
       .insert({
         user_id: user.id,
         amount: amount,
-        reason: reason || "Direct Wallet Withdrawal",
+        reason: `[Phone: ${phoneNumber}] ${reason || "Direct Wallet Withdrawal"}`,
         status: "pending",
         requested_at: new Date().toISOString(),
       })

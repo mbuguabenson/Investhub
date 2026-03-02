@@ -24,10 +24,12 @@ interface WalletWithdrawalModalProps {
   isOpen: boolean
   onClose: () => void
   balance: number
+  initialPhoneNumber?: string
 }
 
-export function WalletWithdrawalModal({ isOpen, onClose, balance }: WalletWithdrawalModalProps) {
+export function WalletWithdrawalModal({ isOpen, onClose, balance, initialPhoneNumber }: WalletWithdrawalModalProps) {
   const [amount, setAmount] = useState('')
+  const [phoneNumber, setPhoneNumber] = useState(initialPhoneNumber || '')
   const [reason, setReason] = useState('')
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
@@ -45,6 +47,12 @@ export function WalletWithdrawalModal({ isOpen, onClose, balance }: WalletWithdr
       return
     }
 
+    if (!phoneNumber) {
+      setError('Please enter a mobile number for the withdrawal')
+      setLoading(false)
+      return
+    }
+
     if (withdrawAmount > balance) {
       setError('Insufficient balance in your wallet.')
       setLoading(false)
@@ -55,7 +63,11 @@ export function WalletWithdrawalModal({ isOpen, onClose, balance }: WalletWithdr
       const response = await fetch('/api/payments/withdraw', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: withdrawAmount, reason })
+        body: JSON.stringify({ 
+          amount: withdrawAmount, 
+          phoneNumber,
+          reason 
+        })
       })
 
       const data = await response.json()
@@ -71,6 +83,7 @@ export function WalletWithdrawalModal({ isOpen, onClose, balance }: WalletWithdr
 
   const resetAndClose = () => {
     setAmount('')
+    setPhoneNumber('')
     setReason('')
     setSuccess(false)
     setError('')
@@ -90,7 +103,7 @@ export function WalletWithdrawalModal({ isOpen, onClose, balance }: WalletWithdr
 
               <form onSubmit={handleWithdraw} className="space-y-6">
                 {error && (
-                  <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2-xl flex gap-3 animate-in fade-in zoom-in duration-300">
+                  <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl flex gap-3 animate-in fade-in zoom-in duration-300">
                     <AlertCircle className="shrink-0 w-5 h-5 text-red-500 mt-0.5" />
                     <p className="text-red-500 text-[10px] font-black uppercase tracking-widest leading-relaxed">{error}</p>
                   </div>
@@ -114,18 +127,30 @@ export function WalletWithdrawalModal({ isOpen, onClose, balance }: WalletWithdr
                 </div>
 
                 <div className="space-y-4">
+                  <Label className="text-xs font-bold text-white/40 px-1 uppercase tracking-wider">Mobile Number (M-Pesa)</Label>
+                  <Input
+                    type="tel"
+                    placeholder="e.g. 2547XXXXXXXX"
+                    value={phoneNumber}
+                    onChange={(e) => setPhoneNumber(e.target.value)}
+                    className="h-14 bg-white/5 border-none rounded-2xl focus-visible:ring-primary/50 font-bold"
+                  />
+                  <p className="text-[10px] text-white/20 italic px-1">Funds will be sent to this number.</p>
+                </div>
+
+                <div className="space-y-4">
                   <Label className="text-xs font-bold text-white/40 px-1 uppercase tracking-wider">Reason (Optional)</Label>
                   <Textarea 
                     placeholder="e.g. Taking profits"
                     value={reason}
                     onChange={(e) => setReason(e.target.value)}
-                    className="bg-white/5 border-none rounded-2xl focus-visible:ring-primary/50 text-white min-h-[100px]"
+                    className="bg-white/5 border-none rounded-2xl focus-visible:ring-primary/50 text-white min-h-[80px]"
                   />
                 </div>
 
                 <Button 
                   type="submit"
-                  disabled={loading || !amount}
+                  disabled={loading || !amount || !phoneNumber}
                   className="w-full h-14 bg-gradient-bineo rounded-2xl font-bold text-white text-lg shadow-xl active:scale-95 transition-all"
                 >
                   {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : 'Request Withdrawal'}

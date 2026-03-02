@@ -156,12 +156,17 @@ export default function WalletPage() {
         </div>
       </div>
 
-      <DepositModal isOpen={isDepositOpen} onClose={() => setIsDepositOpen(false)} />
+      <DepositModal 
+        isOpen={isDepositOpen} 
+        onClose={() => setIsDepositOpen(false)} 
+        initialPhoneNumber={profile?.phone_number}
+      />
       <TransferModal isOpen={isTransferOpen} onClose={() => setIsTransferOpen(false)} />
       <WalletWithdrawalModal
         isOpen={isWithdrawOpen}
         onClose={() => setIsWithdrawOpen(false)}
         balance={isTestMode ? 42982.00 : (profile?.account_balance || 0)}
+        initialPhoneNumber={profile?.phone_number}
       />
     </div>
   )

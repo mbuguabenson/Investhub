@@ -1,4 +1,4 @@
-import { supabase } from "./supabase";
+import { supabase, supabaseAdmin } from "./supabase";
 import type {
   UserProfile,
   InvestmentPlan,
@@ -18,10 +18,12 @@ export async function checkAccountExists(
   phoneNumber: string,
   idNumber: string,
 ): Promise<boolean> {
+  const client = supabaseAdmin || supabase; // Fallback to public client if admin is not available
+
   if (!isSupabaseConfigured()) return false;
 
   try {
-    const { data, error } = await supabase
+    const { data, error } = await client
       .from("user_profiles")
       .select("id")
       .or(`phone_number.eq.${phoneNumber},id_number.eq.${idNumber}`)
@@ -31,7 +33,7 @@ export async function checkAccountExists(
       console.error("Error checking account existence:", error);
       return false;
     }
-    return data.length > 0;
+    return !!(data && data.length > 0);
   } catch (e) {
     return false;
   }

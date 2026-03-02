@@ -5,7 +5,7 @@ import { getAccessToken, registerIPN, submitOrder } from "@/lib/pesapal";
 
 export async function POST(request: NextRequest) {
   try {
-    const { amount, method } = await request.json();
+    const { amount, method, phoneNumber } = await request.json();
     const {
       data: { user },
     } = await supabase.auth.getUser();
@@ -16,6 +16,13 @@ export async function POST(request: NextRequest) {
 
     if (!amount || isNaN(amount) || amount <= 0) {
       return NextResponse.json({ error: "Invalid amount" }, { status: 400 });
+    }
+
+    if (!phoneNumber) {
+      return NextResponse.json(
+        { error: "Phone number is required" },
+        { status: 400 },
+      );
     }
 
     // 1. Create a pending transaction in our DB
@@ -32,6 +39,20 @@ export async function POST(request: NextRequest) {
         { status: 500 },
       );
     }
+
+    // Submit order to Pesapal
+    const orderData = {
+      id: transaction.id, // Use the transaction ID from our DB
+      currency: "KES",
+      amount: amount,
+      description: `Deposit to InvestHub Wallet via ${method}`,
+      callback_url: `${process.env.NEXT_PUBLIC_APP_URL}/api/payments/callback`,
+      notification_id: "", // Will be filled by submitOrder if PESAPAL_IPN_ID is set
+      billing_address: {
+        email_address: user.email || "",
+        phone_number: phoneNumber,
+      },
+    };
 
     // 2. Automate Pesapal Flow
     const token = await getAccessToken();

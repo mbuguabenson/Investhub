@@ -82,16 +82,20 @@ export default function LoginPage() {
         return
       }
 
+      console.log('Login successful, checking 2FA...')
       // Check if 2FA is enabled for this user (Mock logic)
       const isTwoFactorEnabled = false
 
       if (isTwoFactorEnabled) {
+        console.log('2FA required, showing OTP...')
         setShowTwoFactor(true)
         setLoading(false)
       } else {
+        console.log('Redirecting to dashboard...')
         router.push('/dashboard')
       }
     } catch (err: any) {
+      console.error('Login caught error:', err)
       setError(err.message || 'An error occurred')
       setLoading(false)
     }

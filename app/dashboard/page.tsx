@@ -200,7 +200,11 @@ export default function DashboardPage() {
       </div>
 
       {/* Modals */}
-      <DepositModal isOpen={isDepositOpen} onClose={() => setIsDepositOpen(false)} />
+      <DepositModal 
+        isOpen={isDepositOpen} 
+        onClose={() => setIsDepositOpen(false)} 
+        initialPhoneNumber={profile?.phone_number}
+      />
       <TransferModal isOpen={isTransferOpen} onClose={() => setIsTransferOpen(false)} />
     </div>
   )

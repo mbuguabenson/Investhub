@@ -27,15 +27,17 @@ import { cn } from '@/lib/utils'
 interface DepositModalProps {
   isOpen: boolean
   onClose: () => void
+  initialPhoneNumber?: string
 }
 
 type Step = 'method' | 'amount' | 'confirm' | 'success'
 type Method = 'mpesa' | 'card' | 'bank'
 
-export function DepositModal({ isOpen, onClose }: DepositModalProps) {
+export function DepositModal({ isOpen, onClose, initialPhoneNumber }: DepositModalProps) {
   const [step, setStep] = useState<Step>('method')
   const [method, setMethod] = useState<Method | null>(null)
   const [amount, setAmount] = useState('')
+  const [phoneNumber, setPhoneNumber] = useState(initialPhoneNumber || '')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -53,7 +55,11 @@ export function DepositModal({ isOpen, onClose }: DepositModalProps) {
       const response = await fetch('/api/payments/deposit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: parseFloat(amount), method })
+        body: JSON.stringify({ 
+          amount: parseFloat(amount), 
+          method,
+          phoneNumber 
+        })
       })
       
       const data = await response.json()
@@ -159,9 +165,27 @@ export function DepositModal({ isOpen, onClose }: DepositModalProps) {
                   ))}
                 </div>
               </div>
+
+              <div className="space-y-4">
+                <Label className="text-xs font-bold text-white/40 px-1 uppercase tracking-wider">Mobile Number to Use</Label>
+                <div className="relative">
+                  <span className="absolute left-6 top-1/2 -translate-y-1/2 text-white/20">
+                    <Smartphone size={20} />
+                  </span>
+                  <Input
+                    type="tel"
+                    placeholder="e.g. 2547XXXXXXXX"
+                    value={phoneNumber}
+                    onChange={(e) => setPhoneNumber(e.target.value)}
+                    className="h-14 pl-14 bg-white/5 border-none rounded-2xl focus-visible:ring-primary/50 font-bold"
+                  />
+                </div>
+                <p className="text-[10px] text-white/20 italic px-1">Specify the number where the payment prompt will be sent.</p>
+              </div>
+
               <Button 
                 onClick={() => setStep('confirm')}
-                disabled={!amount || parseFloat(amount) <= 0}
+                disabled={!amount || parseFloat(amount) <= 0 || !phoneNumber}
                 className="w-full h-14 bg-gradient-bineo rounded-2xl font-bold text-white text-lg"
               >
                 Continue
@@ -179,6 +203,10 @@ export function DepositModal({ isOpen, onClose }: DepositModalProps) {
                 <div className="flex justify-between">
                   <span className="text-white/40">Method</span>
                   <span className="font-bold uppercase">{method}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-white/40">Phone Number</span>
+                  <span className="font-bold">{phoneNumber}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-white/40">Fee</span>

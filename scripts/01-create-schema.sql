@@ -7,12 +7,12 @@ CREATE TABLE user_profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   full_name TEXT NOT NULL,
   id_number TEXT UNIQUE NOT NULL,
-  id_type VARCHAR(50) NOT NULL, -- national_id, passport, etc
-  date_of_birth DATE NOT NULL,
+  id_type VARCHAR(50), -- national_id, passport, etc
+  date_of_birth DATE,
   phone_number VARCHAR(20) UNIQUE NOT NULL,
-  address TEXT NOT NULL,
-  city TEXT NOT NULL,
-  country TEXT NOT NULL,
+  address TEXT,
+  city TEXT,
+  country TEXT,
   kyc_status VARCHAR(50) DEFAULT 'pending', -- pending, approved, rejected
   kyc_submitted_at TIMESTAMP WITH TIME ZONE,
   kyc_verified_at TIMESTAMP WITH TIME ZONE,

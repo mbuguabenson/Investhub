@@ -30,7 +30,15 @@ export async function POST(request: Request) {
       .from("user_profiles")
       .insert({
         id: userId,
-        ...profileData,
+        full_name: profileData.full_name || "New User",
+        phone_number: profileData.phone_number,
+        id_number: profileData.id_number,
+        // Provide defaults for strict DB constraints
+        id_type: profileData.id_type || "National ID",
+        date_of_birth: profileData.date_of_birth || "1990-01-01",
+        address: profileData.address || "Not Provided",
+        city: profileData.city || "Not Provided",
+        country: profileData.country || "Kenya",
         account_balance: 0,
         total_invested: 0,
         total_returns: 0,
