@@ -91,8 +91,8 @@ export default function LoginPage() {
         setShowTwoFactor(true)
         setLoading(false)
       } else {
-        console.log('Redirecting to dashboard...')
-        router.push('/dashboard')
+        console.log('Redirecting to dashboard via window.location...')
+        window.location.href = '/dashboard'
       }
     } catch (err: any) {
       console.error('Login caught error:', err)

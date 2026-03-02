@@ -34,24 +34,35 @@ export default function DashboardPage() {
 
   useEffect(() => {
     const initializeDashboard = async () => {
+      console.log('Initializing Dashboard...')
       try {
         const {
           data: { user: currentUser },
           error: userError,
         } = await supabase.auth.getUser()
 
+        console.log('Dashboard Auth check:', { user: !!currentUser, error: userError })
+
         if (!currentUser && !isTestMode) {
+          console.log('No user found and not in test mode, redirecting to login...')
           router.push('/auth/login')
           return
         }
 
         setUser(currentUser)
 
+        console.log('Fetching profile and data...')
         const [userProfile, userInvestments, investmentPlans] = await Promise.all([
           currentUser ? getUserProfile(currentUser.id) : null,
           currentUser ? getUserInvestments(currentUser.id) : [],
           getInvestmentPlans(),
         ])
+
+        console.log('Data fetched:', { 
+          profile: !!userProfile, 
+          investments: userInvestments.length, 
+          plans: investmentPlans.length 
+        })
 
         setProfile(userProfile)
         setInvestments(userInvestments)

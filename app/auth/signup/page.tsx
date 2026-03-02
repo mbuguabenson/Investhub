@@ -122,7 +122,7 @@ export default function SignupPage() {
 
       if (authData.session) {
         console.log('Signup successful, session found. Auto-logging in...')
-        router.push('/dashboard')
+        window.location.href = '/dashboard'
       } else {
         console.log('Signup successful, verification email sent.')
         setVerificationSent(true)
