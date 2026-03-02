@@ -100,16 +100,23 @@ export default function SignupPage() {
         return
       }
 
-      // Create user profile
-      const profileCreated = await createUserProfile(authData.user.id, {
-        full_name: formData.fullName,
-        phone_number: formData.phoneNumber,
-        id_number: formData.idNumber,
-        kyc_status: 'pending',
-      } as any)
+       // Create user profile via server API to bypass RLS
+      const profileResponse = await fetch('/api/auth/profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: authData.user.id,
+          profileData: {
+            full_name: formData.fullName,
+            phone_number: formData.phoneNumber,
+            id_number: formData.idNumber,
+          }
+        })
+      })
 
-      if (!profileCreated) {
-        setError('Failed to create user profile.')
+      if (!profileResponse.ok) {
+        const errorData = await profileResponse.json()
+        setError(errorData.error || 'Failed to initialize user profile.')
         return
       }
 
