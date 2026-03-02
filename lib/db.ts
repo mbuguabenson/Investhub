@@ -67,8 +67,10 @@ export async function createUserProfile(
 ): Promise<UserProfile | null> {
   if (!isSupabaseConfigured()) return null;
 
+  const client = supabaseAdmin || supabase; // Use Admin if available to bypass RLS
+
   try {
-    const { data, error } = await supabase
+    const { data, error } = await client
       .from("user_profiles")
       .insert({
         id: userId,
@@ -273,8 +275,10 @@ export async function createTransaction(
 ): Promise<Transaction | null> {
   if (!isSupabaseConfigured()) return null;
 
+  const client = supabaseAdmin || supabase;
+
   try {
-    const { data, error } = await supabase
+    const { data, error } = await client
       .from("transactions")
       .insert({
         user_id: userId,
