@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { createServerSupabase } from "@/lib/supabase-server";
 import { createTransaction } from "@/lib/db";
 import { getAccessToken, registerIPN, submitOrder } from "@/lib/pesapal";
 
 export async function POST(request: NextRequest) {
   try {
     const { amount, method, phoneNumber } = await request.json();
+    const supabase = await createServerSupabase();
     const {
       data: { user },
     } = await supabase.auth.getUser();
