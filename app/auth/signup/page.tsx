@@ -28,6 +28,7 @@ export default function SignupPage() {
   })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [verificationSent, setVerificationSent] = useState(false)
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -112,12 +113,50 @@ export default function SignupPage() {
         return
       }
 
-      router.push('/dashboard')
+      if (authData.session) {
+        router.push('/dashboard')
+      } else {
+        setVerificationSent(true)
+      }
     } catch (err: any) {
       setError(err.message || 'An error occurred')
     } finally {
       setLoading(false)
     }
+  }
+
+  if (verificationSent) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4 py-12 relative overflow-hidden">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-full -z-10">
+           <div className="absolute top-1/4 right-0 w-[400px] h-[400px] bg-primary/10 rounded-full blur-[100px] animate-pulse" />
+        </div>
+        
+        <Card className="w-full max-w-md card-premium p-10 border-border/20 shadow-2xl text-center space-y-8 animate-in fade-in zoom-in duration-700">
+          <div className="w-20 h-20 bg-primary/10 rounded-[2rem] flex items-center justify-center mx-auto text-primary animate-bounce">
+            <ShieldCheck size={40} />
+          </div>
+          <div className="space-y-4">
+            <h1 className="text-3xl font-black italic tracking-tighter uppercase text-foreground">Verify Account</h1>
+            <p className="text-muted-foreground text-sm font-bold uppercase tracking-widest leading-relaxed">
+              We've sent a verification link to <span className="text-primary">{formData.email}</span>. Please check your inbox and confirm your account to start investing.
+            </p>
+          </div>
+          <div className="pt-4">
+            <Button 
+              variant="outline" 
+              className="w-full h-14 rounded-2xl border-white/10 text-xs font-black uppercase tracking-widest hover:bg-white/5"
+              onClick={() => router.push('/auth/login')}
+            >
+              Return to Sign In
+            </Button>
+          </div>
+          <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/40">
+            Didn't receive the email? Check your spam folder or contact support.
+          </p>
+        </Card>
+      </div>
+    )
   }
 
   return (
