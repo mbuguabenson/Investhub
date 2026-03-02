@@ -1,3 +1,4 @@
+import { createBrowserClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 
 const supabaseUrl =
@@ -10,14 +11,15 @@ if (
   !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 ) {
   console.warn(
-    "Missing Supabase environment variables. Please check your .env.local file. " +
+    "Missing Supabase environment variables. Please check your .env file. " +
       "The app will continue in offline/mock mode for UI preview.",
   );
 }
 
-export const supabase = createClient(supabaseUrl, supabaseKey);
+// Browser client using @supabase/ssr for Next.jsApp Router compatibility
+export const supabase = createBrowserClient(supabaseUrl, supabaseKey);
 
-// Server-side client with service role
+// Server-side admin client with service role
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 export const supabaseAdmin = supabaseServiceKey
