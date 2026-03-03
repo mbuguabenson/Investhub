@@ -13,7 +13,9 @@ import {
   Building2,
   Copy,
   Check,
-  Loader2
+  Loader2,
+  ArrowDownLeft,
+  DollarSign
 } from 'lucide-react'
 import { WalletCard } from '@/components/dashboard/wallet-card'
 import { DepositModal } from '@/components/dashboard/deposit-modal'
@@ -21,8 +23,9 @@ import { TransferModal } from '@/components/dashboard/transfer-modal'
 import { WalletWithdrawalModal } from '@/components/dashboard/wallet-withdrawal-modal'
 
 import { supabase } from '@/lib/supabase'
-import { getUserProfile } from '@/lib/db'
-import type { UserProfile } from '@/lib/database.types'
+import { getUserProfile, getUserTransactions } from '@/lib/db'
+import type { UserProfile, Transaction } from '@/lib/database.types'
+import { cn } from '@/lib/utils'
 
 function WalletContent() {
   const searchParams = useSearchParams()
@@ -32,6 +35,7 @@ function WalletContent() {
   const [isTransferOpen, setIsTransferOpen] = useState(false)
   const [isWithdrawOpen, setIsWithdrawOpen] = useState(false)
   const [profile, setProfile] = useState<UserProfile | null>(null)
+  const [transactions, setTransactions] = useState<Transaction[]>([])
   const [copied, setCopied] = useState(false)
   const [loading, setLoading] = useState(true)
 
@@ -39,21 +43,25 @@ function WalletContent() {
     // Add global listener for withdrawal button in WalletCard
     (window as any).dispatchWithdrawal = () => setIsWithdrawOpen(true)
 
-    const fetchProfile = async () => {
+    const fetchData = async () => {
       try {
         const { data: { user } } = await supabase.auth.getUser()
         if (user) {
-          const profileData = await getUserProfile(user.id)
+          const [profileData, transactionsData] = await Promise.all([
+            getUserProfile(user.id),
+            getUserTransactions(user.id)
+          ])
           setProfile(profileData)
+          setTransactions(transactionsData.slice(0, 5)) // Show last 5
         }
       } catch (error) {
-        console.error('Error fetching profile:', error)
+        console.error('Error fetching data:', error)
       } finally {
         setLoading(false)
       }
     }
 
-    fetchProfile()
+    fetchData()
 
     return () => {
       delete (window as any).dispatchWithdrawal
@@ -61,23 +69,58 @@ function WalletContent() {
   }, [])
 
   useEffect(() => {
-    // Auto-refresh for deposit success
-    if (depositStatus === 'completed') {
-      const interval = setInterval(async () => {
-        const { data: { user } } = await supabase.auth.getUser()
-        if (user) {
-          const profileData = await getUserProfile(user.id)
-          if (profileData) setProfile(profileData)
-        }
-      }, 3000)
-      
-      const timeout = setTimeout(() => clearInterval(interval), 15000)
-      return () => {
-        clearInterval(interval)
-        clearTimeout(timeout)
-      }
+    let profileChannel: any
+    let transactionChannel: any
+
+    const setupRealtime = async () => {
+      const { data: { user: currentUser } } = await supabase.auth.getUser()
+      if (!currentUser) return
+
+      // Listen for profile changes
+      profileChannel = supabase
+        .channel(`wallet_profile:${currentUser.id}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'user_profiles',
+            filter: `id=eq.${currentUser.id}`
+          },
+          (payload) => {
+            console.log('Real-time wallet profile update:', payload.new)
+            setProfile(payload.new as UserProfile)
+          }
+        )
+        .subscribe()
+
+      // Listen for transactions
+      transactionChannel = supabase
+        .channel(`wallet_transactions:${currentUser.id}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'transactions',
+            filter: `user_id=eq.${currentUser.id}`
+          },
+          async () => {
+            console.log('Real-time wallet transaction update')
+            const latest = await getUserTransactions(currentUser.id)
+            setTransactions(latest.slice(0, 5))
+          }
+        )
+        .subscribe()
     }
-  }, [depositStatus])
+
+    setupRealtime()
+
+    return () => {
+      if (profileChannel) supabase.removeChannel(profileChannel)
+      if (transactionChannel) supabase.removeChannel(transactionChannel)
+    }
+  }, [])
 
   const accountId = 'IH-7782-9910-4589'
 
@@ -137,6 +180,54 @@ function WalletContent() {
                   <p className="text-sm font-black uppercase tracking-widest mt-1 text-foreground">KES (Shillings)</p>
                 </div>
               </div>
+            </div>
+          </Card>
+
+          <Card className="card-premium border-border/20 p-8 space-y-8">
+            <div className="flex justify-between items-center">
+              <h3 className="text-xl font-black italic tracking-tighter text-foreground uppercase">Recent Transactions</h3>
+              <Button 
+                variant="link" 
+                className="text-primary text-[10px] font-black uppercase tracking-widest p-0"
+                onClick={() => (window as any).location.href = '/dashboard/transactions'}
+              >
+                View All
+              </Button>
+            </div>
+            
+            <div className="space-y-6">
+              {transactions.length > 0 ? (
+                transactions.map((transaction) => (
+                  <div key={transaction.id} className="flex items-center justify-between group cursor-pointer" onClick={() => (window as any).location.href = '/dashboard/transactions'}>
+                    <div className="flex items-center gap-5">
+                      <div className="bg-muted/50 border border-border/20 p-3 rounded-xl group-hover:bg-primary/10 transition-colors">
+                        {transaction.type === 'deposit' ? <ArrowDownLeft className="w-5 h-5 text-emerald-500" /> : 
+                         transaction.type === 'withdrawal' ? <ArrowUpRight className="w-5 h-5 text-red-500" /> : 
+                         <DollarSign className="w-5 h-5 text-blue-500" />}
+                      </div>
+                      <div>
+                        <p className="font-black italic tracking-tighter text-foreground uppercase text-sm">{transaction.type}</p>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 mt-0.5">
+                          {new Date(transaction.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className={cn(
+                        "font-black italic tracking-tighter",
+                        transaction.type === 'withdrawal' ? 'text-foreground' : 'text-emerald-500'
+                      )}>
+                        {transaction.type === 'withdrawal' ? '-' : '+'}KES {transaction.amount.toLocaleString()}
+                      </p>
+                      <p className="text-[8px] font-black uppercase tracking-widest text-muted-foreground/40 mt-1">{transaction.status}</p>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-6">
+                  <p className="text-muted-foreground text-[10px] font-black uppercase tracking-widest">No transactions yet</p>
+                </div>
+              )}
             </div>
           </Card>
         </div>

@@ -7,8 +7,8 @@ import { Card } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { AlertCircle, Loader2, Search, Bell, Settings as SettingsIcon } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
-import { getUserProfile, getUserInvestments, getInvestmentPlans } from '@/lib/db'
-import type { UserProfile, Investment, InvestmentPlan } from '@/lib/database.types'
+import { getUserProfile, getUserInvestments, getInvestmentPlans, getUserTransactions } from '@/lib/db'
+import type { UserProfile, Investment, InvestmentPlan, Transaction } from '@/lib/database.types'
 import { WalletCard } from '@/components/dashboard/wallet-card'
 import { PocketsGrid } from '@/components/dashboard/pockets-grid'
 import { DepositModal } from '@/components/dashboard/deposit-modal'
@@ -25,6 +25,7 @@ function DashboardContent() {
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [investments, setInvestments] = useState<Investment[]>([])
   const [plans, setPlans] = useState<InvestmentPlan[]>([])
+  const [transactions, setTransactions] = useState<Transaction[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   
@@ -52,21 +53,24 @@ function DashboardContent() {
         setUser(currentUser)
 
         console.log('Fetching profile and data...')
-        const [userProfile, userInvestments, investmentPlans] = await Promise.all([
+        const [userProfile, userInvestments, investmentPlans, userTransactions] = await Promise.all([
           currentUser ? getUserProfile(currentUser.id) : null,
           currentUser ? getUserInvestments(currentUser.id) : [],
           getInvestmentPlans(),
+          currentUser ? getUserTransactions(currentUser.id) : [],
         ])
 
         console.log('Data fetched:', { 
           profile: !!userProfile, 
           investments: userInvestments.length, 
-          plans: investmentPlans.length 
+          plans: investmentPlans.length,
+          transactions: userTransactions.length
         })
 
         setProfile(userProfile)
         setInvestments(userInvestments)
         setPlans(investmentPlans)
+        setTransactions(userTransactions.slice(0, 3)) // Show only last 3
       } catch (err) {
         console.error('Error initializing dashboard:', err)
         setError('Failed to load dashboard')
@@ -79,18 +83,74 @@ function DashboardContent() {
   }, [router, depositStatus])
 
   useEffect(() => {
-    // If we just got a 'completed' status, re-fetch profile every few seconds for a bit
-    // to catch the webhook update if it hasn't landed yet
+    let profileChannel: any
+    let transactionChannel: any
+
+    const setupRealtime = async () => {
+      const { data: { user: currentUser } } = await supabase.auth.getUser()
+      if (!currentUser) return
+
+      // Listen for profile changes (balance)
+      profileChannel = supabase
+        .channel(`public:user_profiles:${currentUser.id}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'user_profiles',
+            filter: `id=eq.${currentUser.id}`
+          },
+          (payload) => {
+            console.log('Real-time profile update:', payload.new)
+            setProfile(payload.new as UserProfile)
+          }
+        )
+        .subscribe()
+
+      // Listen for new transactions
+      transactionChannel = supabase
+        .channel(`public:transactions:${currentUser.id}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'transactions',
+            filter: `user_id=eq.${currentUser.id}`
+          },
+          async () => {
+            console.log('Real-time transaction update, re-fetching...')
+            const latest = await getUserTransactions(currentUser.id)
+            setTransactions(latest.slice(0, 3))
+          }
+        )
+        .subscribe()
+    }
+
+    setupRealtime()
+
+    return () => {
+      if (profileChannel) supabase.removeChannel(profileChannel)
+      if (transactionChannel) supabase.removeChannel(transactionChannel)
+    }
+  }, [])
+
+  useEffect(() => {
+    // Fallback polling for deposit success if redirecting with status=completed
     if (depositStatus === 'completed') {
       const interval = setInterval(async () => {
         const { data: { user: currentUser } } = await supabase.auth.getUser()
         if (currentUser) {
           const userProfile = await getUserProfile(currentUser.id)
           if (userProfile) setProfile(userProfile)
+          
+          const userTransactions = await getUserTransactions(currentUser.id)
+          setTransactions(userTransactions.slice(0, 3))
         }
-      }, 3000)
+      }, 5000)
       
-      const timeout = setTimeout(() => clearInterval(interval), 15000)
+      const timeout = setTimeout(() => clearInterval(interval), 20000)
       return () => {
         clearInterval(interval)
         clearTimeout(timeout)
@@ -159,26 +219,36 @@ function DashboardContent() {
           <Card className="card-premium h-full border-none p-8 flex flex-col shadow-2xl">
             <h3 className="text-xl font-black italic tracking-tighter text-foreground uppercase mb-8">Recent Activity</h3>
             <div className="space-y-6">
-              {[
-                { title: 'Transfer to Maria', date: '20 May 2024', amount: -1500, type: 'transfer' },
-                { title: 'Investment Return', date: '19 May 2024', amount: +450.50, type: 'return' },
-                { title: 'Deposit via M-Pesa', date: '18 May 2024', amount: +10000, type: 'deposit' },
-              ].map((activity, i) => (
-                <div key={i} className="flex items-center gap-4 group cursor-pointer">
-                  <div className="w-12 h-12 rounded-2xl bg-muted/50 border border-border/20 flex items-center justify-center group-hover:bg-primary/10 transition-colors">
-                    <Search size={20} className="text-muted-foreground group-hover:text-primary" />
+              {transactions.length > 0 ? (
+                transactions.map((activity, i) => (
+                  <div key={activity.id} className="flex items-center gap-4 group cursor-pointer" onClick={() => router.push('/dashboard/transactions')}>
+                    <div className="w-12 h-12 rounded-2xl bg-muted/50 border border-border/20 flex items-center justify-center group-hover:bg-primary/10 transition-colors">
+                      <Search size={20} className="text-muted-foreground group-hover:text-primary" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-bold text-sm text-foreground capitalize">{activity.type} {activity.status === 'pending' ? '(Pending)' : ''}</p>
+                      <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">
+                        {new Date(activity.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                      </p>
+                    </div>
+                    <p className={cn(
+                      "font-black text-sm", 
+                      activity.type === 'deposit' || activity.type === 'return' ? "text-emerald-500" : "text-foreground"
+                    )}>
+                      {activity.type === 'deposit' || activity.type === 'return' ? '+' : '-'}KES {activity.amount.toLocaleString()}
+                    </p>
                   </div>
-                  <div className="flex-1">
-                    <p className="font-bold text-sm text-foreground">{activity.title}</p>
-                    <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">{activity.date}</p>
-                  </div>
-                  <p className={cn("font-black text-sm", activity.amount > 0 ? "text-emerald-500" : "text-foreground")}>
-                    {activity.amount > 0 ? '+' : ''}KES {Math.abs(activity.amount).toLocaleString()}
-                  </p>
+                ))
+              ) : (
+                <div className="text-center py-10">
+                  <p className="text-muted-foreground text-[10px] font-black uppercase tracking-widest">No recent activity</p>
                 </div>
-              ))}
+              )}
             </div>
-            <Button className="w-full mt-8 bg-muted/50 hover:bg-muted text-foreground rounded-2xl h-12 border border-border/20 text-[10px] font-black uppercase tracking-widest">
+            <Button 
+              className="w-full mt-8 bg-muted/50 hover:bg-muted text-foreground rounded-2xl h-12 border border-border/20 text-[10px] font-black uppercase tracking-widest"
+              onClick={() => router.push('/dashboard/transactions')}
+            >
               See All Transactions
             </Button>
           </Card>
