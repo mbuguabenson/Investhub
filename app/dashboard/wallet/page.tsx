@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -12,7 +12,8 @@ import {
   Smartphone,
   Building2,
   Copy,
-  Check
+  Check,
+  Loader2
 } from 'lucide-react'
 import { WalletCard } from '@/components/dashboard/wallet-card'
 import { DepositModal } from '@/components/dashboard/deposit-modal'
@@ -23,7 +24,7 @@ import { supabase } from '@/lib/supabase'
 import { getUserProfile } from '@/lib/db'
 import type { UserProfile } from '@/lib/database.types'
 
-export default function WalletPage() {
+function WalletContent() {
   const searchParams = useSearchParams()
   const depositStatus = searchParams.get('status')
 
@@ -198,6 +199,18 @@ export default function WalletPage() {
         initialPhoneNumber={profile?.phone_number}
       />
     </div>
+  )
+}
+
+export default function WalletPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center h-[60vh]">
+        <Loader2 className="w-8 h-8 text-primary animate-spin" />
+      </div>
+    }>
+      <WalletContent />
+    </Suspense>
   )
 }
 

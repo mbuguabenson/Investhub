@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -17,7 +17,7 @@ import { TransferModal } from '@/components/dashboard/transfer-modal'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
 
-export default function DashboardPage() {
+function DashboardContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const depositStatus = searchParams.get('status')
@@ -235,5 +235,17 @@ export default function DashboardPage() {
       />
       <TransferModal isOpen={isTransferOpen} onClose={() => setIsTransferOpen(false)} />
     </div>
+  )
+}
+
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center h-[60vh]">
+        <Loader2 className="w-8 h-8 text-primary animate-spin" />
+      </div>
+    }>
+      <DashboardContent />
+    </Suspense>
   )
 }
