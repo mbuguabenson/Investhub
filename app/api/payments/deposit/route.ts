@@ -42,18 +42,6 @@ export async function POST(request: NextRequest) {
     }
 
     // Submit order to Pesapal
-    const orderData = {
-      id: transaction.id, // Use the transaction ID from our DB
-      currency: "KES",
-      amount: amount,
-      description: `Deposit to InvestHub Wallet via ${method}`,
-      callback_url: `${process.env.NEXT_PUBLIC_APP_URL}/api/payments/callback`,
-      notification_id: "", // Will be filled by submitOrder if PESAPAL_IPN_ID is set
-      billing_address: {
-        email_address: user.email || "",
-        phone_number: phoneNumber,
-      },
-    };
 
     // 2. Automate Pesapal Flow
     const token = await getAccessToken();
@@ -71,6 +59,8 @@ export async function POST(request: NextRequest) {
       amount: amount,
       description: `InvestHub Deposit - ${user.email}`,
       email: user.email!,
+      phone: phoneNumber,
+      callback_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/wallet?status=completed`,
     });
 
     return NextResponse.json({

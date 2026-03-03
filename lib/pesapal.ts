@@ -66,6 +66,7 @@ export async function submitOrder(
     phone?: string;
     firstName?: string;
     lastName?: string;
+    callback_url?: string;
   },
 ) {
   const payload = {
@@ -73,7 +74,9 @@ export async function submitOrder(
     currency: "KES",
     amount: orderData.amount,
     description: orderData.description,
-    callback_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/wallet?status=callback`,
+    callback_url:
+      orderData.callback_url ||
+      `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/wallet?status=callback`,
     notification_id: ipnId,
     billing_address: {
       email_address: orderData.email,
