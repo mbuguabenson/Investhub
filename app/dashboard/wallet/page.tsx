@@ -264,11 +264,11 @@ function WalletContent() {
 
         <div className="lg:col-span-5 space-y-8">
            <Card className="card-premium border-border/20 p-8 space-y-6">
-            <h3 className="text-xl font-black italic tracking-tighter text-foreground">Connected Methods</h3>
+            <h3 className="text-xl font-black italic tracking-tighter text-foreground">Payment Channels</h3>
             <div className="space-y-4">
               {[
-                { name: 'M-Pesa Express', detail: profile?.phone_number || 'Not connected', icon: Smartphone, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
-                { name: 'Bank Transfer', detail: 'Primary Deposit Channel', icon: Building2, color: 'text-blue-500', bg: 'bg-blue-500/10' },
+                { name: 'M-Pesa Express', detail: profile?.phone_number || 'Setup required', icon: Smartphone, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
+                { name: 'Pesapal V3', detail: 'Secure Web Checkout', icon: CreditCard, color: 'text-blue-500', bg: 'bg-blue-500/10' },
               ].map((method, i) => (
                 <div key={i} className="flex items-center gap-4 p-4 rounded-2xl bg-muted/30 border border-border/20 hover:border-primary/20 transition-all cursor-pointer group">
                   <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${method.bg} ${method.color} shadow-sm`}>
@@ -278,14 +278,8 @@ function WalletContent() {
                     <p className="font-bold text-sm text-foreground">{method.name}</p>
                     <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">{method.detail}</p>
                   </div>
-                  <button className="text-muted-foreground/20 group-hover:text-primary transition-colors">
-                    <SettingsIcon size={18} />
-                  </button>
                 </div>
               ))}
-              <Button className="w-full h-12 bg-muted/50 hover:bg-muted text-foreground border border-border/20 rounded-xl mt-4 text-[10px] font-black uppercase tracking-widest">
-                <Plus size={18} className="mr-2" /> Add New Method
-              </Button>
             </div>
           </Card>
 

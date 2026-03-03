@@ -300,3 +300,22 @@ export async function createTransaction(
     return null;
   }
 }
+
+export async function getPockets(userId: string) {
+  if (!isSupabaseConfigured()) return [];
+  try {
+    const { data, error } = await supabase
+      .from("pockets")
+      .select("*")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: true });
+
+    if (error) {
+      console.error("Error fetching pockets:", error);
+      return [];
+    }
+    return data || [];
+  } catch (e) {
+    return [];
+  }
+}
