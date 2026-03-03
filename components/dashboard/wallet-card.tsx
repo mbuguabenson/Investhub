@@ -76,7 +76,7 @@ export function WalletCard({ balance, currency = 'KES', onDeposit, onTransfer }:
           </div>
         </div>
         <p className="text-white/60 text-[9px] font-black tracking-[0.3em] uppercase">
-          **** **** **** 4589
+          SECURE QUANTUM ENCRYTION
         </p>
       </div>
     </div>

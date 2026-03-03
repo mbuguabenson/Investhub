@@ -79,7 +79,7 @@ function WalletContent() {
           setProfile(profileData)
           setTransactions(transactionsData.slice(0, 5))
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error fetching data:', error)
       } finally {
         setLoading(false)
@@ -319,8 +319,9 @@ function WalletContent() {
 export default function WalletPage() {
   return (
     <Suspense fallback={
-      <div className="flex items-center justify-center h-[60vh]">
+      <div className="flex flex-col items-center justify-center h-[60vh] gap-4">
         <Loader2 className="w-8 h-8 text-primary animate-spin" />
+        <p className="text-muted-foreground text-[10px] font-black uppercase tracking-widest animate-pulse">Syncing Wallet Data...</p>
       </div>
     }>
       <WalletContent />

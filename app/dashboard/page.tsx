@@ -40,9 +40,12 @@ function DashboardContent() {
         const {
           data: { user: currentUser },
           error: userError,
-        } = await supabase.auth.getUser()
+        } = await Promise.race([
+          supabase.auth.getUser(),
+          new Promise<any>((_, reject) => setTimeout(() => reject(new Error('Auth timeout')), 10000))
+        ])
 
-        console.log('Dashboard Auth check:', { user: !!currentUser, error: userError })
+        console.log('Dashboard Auth check:', { user: !!currentUser, id: currentUser?.id, error: userError })
 
         if (!currentUser) {
           console.log('No user found, redirecting to login...')
@@ -98,13 +101,18 @@ function DashboardContent() {
         setProfile(userProfile)
         setInvestments(userInvestments)
         setPlans(investmentPlans)
-        setTransactions(userTransactions.slice(0, 3)) // Show only last 3
-      } catch (err) {
+        
+        if (userTransactions && Array.isArray(userTransactions)) {
+          setTransactions(userTransactions.slice(0, 3))
+        } else {
+          setTransactions([])
+        }
+      } catch (err: any) {
         console.error('Error initializing dashboard:', err)
-        setError('Failed to load dashboard')
+        setError(err.message || 'Failed to load dashboard data')
       } finally {
         setLoading(false)
-        console.log('Post-deposit refresh polling...')
+        console.log('Dashboard initialization complete.')
         // Notify TopBar
         if (typeof window !== 'undefined') (window as any).refreshTopBarBalance?.()
       }
@@ -196,8 +204,26 @@ function DashboardContent() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-[60vh]">
+      <div className="flex flex-col items-center justify-center h-[60vh] gap-4">
         <Loader2 className="w-8 h-8 text-primary animate-spin" />
+        <p className="text-muted-foreground text-[10px] font-black uppercase tracking-widest animate-pulse">Establishing Secure Connection...</p>
+      </div>
+    )
+  }
+
+  if (error && !profile) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[60vh] gap-6 px-4 text-center">
+        <AlertCircle className="w-12 h-12 text-red-500" />
+        <div className="space-y-2">
+          <h2 className="text-2xl font-black italic tracking-tighter text-foreground uppercase">Data Link Interrupted</h2>
+          <p className="text-muted-foreground text-[10px] font-black uppercase tracking-widest max-w-sm mx-auto">
+            {error}. Check your internet or refresh the page.
+          </p>
+        </div>
+        <Button onClick={() => window.location.reload()} className="bg-primary hover:bg-primary/90 rounded-2xl h-12 px-8 text-[10px] font-black uppercase tracking-widest">
+          Retry Connection
+        </Button>
       </div>
     )
   }

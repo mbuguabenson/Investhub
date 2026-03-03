@@ -95,6 +95,17 @@ CREATE TABLE withdrawal_requests (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Create pockets table
+CREATE TABLE IF NOT EXISTS pockets (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES user_profiles(id) ON DELETE CASCADE,
+  name VARCHAR(100) NOT NULL,
+  balance DECIMAL(15, 2) DEFAULT 0,
+  icon VARCHAR(50) DEFAULT 'Umbrella',
+  color VARCHAR(50) DEFAULT 'bg-emerald-500',
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- Create payment_webhooks table (for logging M-Pesa/Pesapal webhooks)
 CREATE TABLE payment_webhooks (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -124,6 +135,14 @@ ALTER TABLE daily_returns ENABLE ROW LEVEL SECURITY;
 ALTER TABLE withdrawal_requests ENABLE ROW LEVEL SECURITY;
 ALTER TABLE investment_plans ENABLE ROW LEVEL SECURITY;
 ALTER TABLE payment_webhooks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE pockets ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies for pockets
+CREATE POLICY "Users can view their own pockets" ON pockets
+  FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own pockets" ON pockets
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
 
 -- RLS Policies for user_profiles
 CREATE POLICY "Users can view their own profile" ON user_profiles
