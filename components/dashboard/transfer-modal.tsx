@@ -56,8 +56,33 @@ export function TransferModal({ isOpen, onClose }: TransferModalProps) {
     setStep('amount')
   }
 
-  const handleTransfer = () => {
-    setStep('success')
+  const [isTransferring, setIsTransferring] = useState(false)
+
+  const handleTransfer = async () => {
+    if (!recipient || !amount) return
+    setIsTransferring(true)
+    try {
+      const response = await fetch('/api/payments/transfer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: parseFloat(amount),
+          recipientId: recipient.id,
+          recipientName: recipient.name
+        }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to transfer')
+      }
+
+      setStep('success')
+    } catch (error: any) {
+      alert(error.message || 'An error occurred during transfer')
+    } finally {
+      setIsTransferring(false)
+    }
   }
 
   const resetAndClose = () => {
@@ -150,10 +175,10 @@ export function TransferModal({ isOpen, onClose }: TransferModalProps) {
               <div className="space-y-4">
                  <Button 
                   onClick={handleTransfer}
-                  disabled={!amount || parseFloat(amount) <= 0}
+                  disabled={!amount || parseFloat(amount) <= 0 || isTransferring}
                   className="w-full h-14 bg-gradient-bineo rounded-2xl font-bold text-white text-lg shadow-[0_8px_25px_rgba(255,165,0,0.3)] transition-transform active:scale-95"
                 >
-                  Send Money Now
+                  {isTransferring ? 'Sending...' : 'Send Money Now'}
                 </Button>
               </div>
             </div>

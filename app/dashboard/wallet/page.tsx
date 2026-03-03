@@ -17,13 +17,13 @@ import { WalletCard } from '@/components/dashboard/wallet-card'
 import { DepositModal } from '@/components/dashboard/deposit-modal'
 import { TransferModal } from '@/components/dashboard/transfer-modal'
 import { WalletWithdrawalModal } from '@/components/dashboard/wallet-withdrawal-modal'
-import { useTestMode } from '@/hooks/use-test-mode'
+
 import { supabase } from '@/lib/supabase'
 import { getUserProfile } from '@/lib/db'
 import type { UserProfile } from '@/lib/database.types'
 
 export default function WalletPage() {
-  const { isTestMode } = useTestMode()
+
   const [isDepositOpen, setIsDepositOpen] = useState(false)
   const [isTransferOpen, setIsTransferOpen] = useState(false)
   const [isWithdrawOpen, setIsWithdrawOpen] = useState(false)
@@ -76,7 +76,7 @@ export default function WalletPage() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         <div className="lg:col-span-7 space-y-8">
           <WalletCard
-            balance={isTestMode ? 42982.00 : (profile?.account_balance || 0)}
+            balance={profile?.account_balance || 0}
             onDeposit={() => setIsDepositOpen(true)}
             onTransfer={() => setIsTransferOpen(true)}
           />
@@ -165,7 +165,7 @@ export default function WalletPage() {
       <WalletWithdrawalModal
         isOpen={isWithdrawOpen}
         onClose={() => setIsWithdrawOpen(false)}
-        balance={isTestMode ? 42982.00 : (profile?.account_balance || 0)}
+        balance={profile?.account_balance || 0}
         initialPhoneNumber={profile?.phone_number}
       />
     </div>

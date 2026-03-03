@@ -17,10 +17,7 @@ import {
   InputOTPSeparator
 } from '@/components/ui/input-otp'
 
-const isSupabaseConfigured = () => {
-  return process.env.NEXT_PUBLIC_SUPABASE_URL && 
-         !process.env.NEXT_PUBLIC_SUPABASE_URL.includes('placeholder-url');
-};
+
 
 export default function LoginPage() {
   const router = useRouter()
@@ -32,11 +29,7 @@ export default function LoginPage() {
   const [showTwoFactor, setShowTwoFactor] = useState(false)
 
   const handleGoogleLogin = async () => {
-    if (!isSupabaseConfigured()) {
-      setError('Google Auth requires Supabase configuration. Entering Test Mode...')
-      setTimeout(() => router.push('/dashboard'), 1500)
-      return
-    }
+
 
     try {
       const { error: googleError } = await supabase.auth.signInWithOAuth({
@@ -56,15 +49,7 @@ export default function LoginPage() {
     setError('')
     setLoading(true)
 
-    // Handle Unconfigured Supabase (Test Mode)
-    if (!isSupabaseConfigured()) {
-      console.warn('Supabase not configured. Simulating login for Test Mode.')
-      setTimeout(() => {
-        setLoading(false)
-        router.push('/dashboard')
-      }, 1500)
-      return
-    }
+
 
     try {
       const { data, error: loginError } = await supabase.auth.signInWithPassword({
@@ -234,14 +219,7 @@ export default function LoginPage() {
             </div>
           </div>
 
-          {!isSupabaseConfigured() && (
-            <div className="mb-6 p-4 bg-primary/10 border border-primary/20 rounded-2xl flex gap-3 italic">
-              <Star className="shrink-0 w-5 h-5 text-primary animate-pulse" />
-              <p className="text-primary/80 text-[10px] font-black uppercase tracking-widest leading-relaxed">
-                Running in TEST MODE. Login will bypass server validation.
-              </p>
-            </div>
-          )}
+
 
           {error && (
             <div className="mb-8 p-4 bg-red-500/10 border border-red-500/50 rounded-2xl flex gap-3 animate-in fade-in zoom-in duration-300">

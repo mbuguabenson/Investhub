@@ -13,14 +13,12 @@ import { WalletCard } from '@/components/dashboard/wallet-card'
 import { PocketsGrid } from '@/components/dashboard/pockets-grid'
 import { DepositModal } from '@/components/dashboard/deposit-modal'
 import { TransferModal } from '@/components/dashboard/transfer-modal'
-import { useTestMode } from '@/hooks/use-test-mode'
-import { Switch } from '@/components/ui/switch'
+
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
 
 export default function DashboardPage() {
   const router = useRouter()
-  const { isTestMode, toggleTestMode } = useTestMode()
   const [user, setUser] = useState<any>(null)
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [investments, setInvestments] = useState<Investment[]>([])
@@ -43,8 +41,8 @@ export default function DashboardPage() {
 
         console.log('Dashboard Auth check:', { user: !!currentUser, error: userError })
 
-        if (!currentUser && !isTestMode) {
-          console.log('No user found and not in test mode, redirecting to login...')
+        if (!currentUser) {
+          console.log('No user found, redirecting to login...')
           router.push('/auth/login')
           return
         }
@@ -76,7 +74,7 @@ export default function DashboardPage() {
     }
 
     initializeDashboard()
-  }, [isTestMode, router])
+  }, [router])
 
   if (loading) {
     return (
@@ -91,29 +89,19 @@ export default function DashboardPage() {
       {/* Top Header Section */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div>
-          <h1 className="text-3xl font-black italic tracking-tighter text-foreground">Hello, {profile?.full_name?.split(' ')[0] || (isTestMode ? 'Maria' : 'User')}! 👋</h1>
+          <h1 className="text-3xl font-black italic tracking-tighter text-foreground">Hello, {profile?.full_name?.split(' ')[0] || 'User'}! 👋</h1>
           <p className="text-muted-foreground text-sm font-bold uppercase tracking-widest mt-1">Welcome back to your premium dashboard.</p>
         </div>
         
         <div className="flex items-center gap-4 bg-muted/50 p-2 rounded-2xl border border-border/20">
-           <div className="flex items-center gap-2 px-3 py-2">
-            <Switch 
-              id="test-mode" 
-              checked={isTestMode} 
-              onCheckedChange={toggleTestMode}
-              className="data-[state=checked]:bg-primary"
-            />
-            <Label htmlFor="test-mode" className="text-[10px] font-black uppercase tracking-widest cursor-pointer text-muted-foreground">
-              Test Mode
-            </Label>
-          </div>
+
           <div className="h-8 w-px bg-border/20" />
           <button className="p-2 hover:bg-muted rounded-xl transition-colors relative">
             <Bell size={20} className="text-muted-foreground" />
             <span className="absolute top-2 right-2 w-2 h-2 bg-primary rounded-full border-2 border-background" />
           </button>
           <div className="h-10 w-10 rounded-xl bg-gradient-purple flex items-center justify-center font-black text-sm text-white shadow-lg">
-            {profile?.full_name?.[0] || (isTestMode ? 'M' : 'U')}
+            {profile?.full_name?.[0] || 'U'}
           </div>
         </div>
       </div>
@@ -123,7 +111,7 @@ export default function DashboardPage() {
         {/* Left Column: Wallet and Pockets */}
         <div className="lg:col-span-8 space-y-8">
           <WalletCard 
-            balance={isTestMode ? 42982.00 : (profile?.account_balance || 0)} 
+            balance={profile?.account_balance || 0} 
             onDeposit={() => setIsDepositOpen(true)}
             onTransfer={() => setIsTransferOpen(true)}
           />

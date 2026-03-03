@@ -8,7 +8,7 @@ import { AlertCircle, Loader2, CheckCircle2, TrendingUp, DollarSign, ArrowRight 
 import { supabase } from '@/lib/supabase'
 import { createInvestment, createTransaction } from '@/lib/db'
 import type { InvestmentPlan } from '@/lib/database.types'
-import { useTestMode } from '@/hooks/use-test-mode'
+
 import { cn } from '@/lib/utils'
 import { useRouter } from 'next/navigation'
 import { getUserProfile } from '@/lib/db'
@@ -20,7 +20,7 @@ interface InvestmentFormProps {
 }
 
 export default function InvestmentForm({ plan }: InvestmentFormProps) {
-  const { isTestMode } = useTestMode()
+
   const router = useRouter()
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [amount, setAmount] = useState('')
@@ -56,7 +56,7 @@ export default function InvestmentForm({ plan }: InvestmentFormProps) {
       return
     }
 
-    if (profile && profile.account_balance < investmentAmount && !isTestMode) {
+    if (profile && profile.account_balance < investmentAmount) {
       setError(`Insufficient balance. You need KES ${(investmentAmount - profile.account_balance).toLocaleString()} more to activate this strategy.`);
       return
     }
@@ -64,13 +64,7 @@ export default function InvestmentForm({ plan }: InvestmentFormProps) {
     setLoading(true)
 
     try {
-      if (isTestMode) {
-        // Mock success for test mode
-        await new Promise(resolve => setTimeout(resolve, 1500))
-        setSuccess(true)
-        setAmount('')
-        return
-      }
+
 
       const {
         data: { user },
@@ -205,12 +199,7 @@ export default function InvestmentForm({ plan }: InvestmentFormProps) {
         </div>
       </div>
 
-      {isTestMode && (
-        <div className="flex items-center gap-3 p-4 bg-primary/10 border border-primary/20 rounded-2xl animate-pulse">
-          <TrendingUp size={20} className="text-primary" />
-          <p className="text-[10px] text-primary font-black uppercase tracking-widest leading-none">Test Mode Active: Simulating Real-Time Growth</p>
-        </div>
-      )}
+
 
       <Button 
         type="submit" 

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { supabase, supabaseAdmin } from "@/lib/supabase";
 import { getAccessToken, getTransactionStatus } from "@/lib/pesapal";
 
 export async function GET(request: NextRequest) {
@@ -15,8 +15,9 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    const client = supabaseAdmin || supabase;
     // 1. Store the IPN notification for auditing
-    await supabase.from("payment_webhooks").insert({
+    await client.from("payment_webhooks").insert({
       pesapal_reference: orderTrackingId,
       webhook_data: { orderTrackingId, merchantReference, type: "IPN_GET" },
       processed: false,
@@ -33,7 +34,7 @@ export async function GET(request: NextRequest) {
 
     if (isSuccess) {
       // 3. Find our transaction
-      const { data: transaction } = await supabase
+      const { data: transaction } = await client
         .from("transactions")
         .select("*")
         .eq("id", merchantReference)
@@ -42,7 +43,7 @@ export async function GET(request: NextRequest) {
 
       if (transaction) {
         // 4. Update transaction status
-        await supabase
+        await client
           .from("transactions")
           .update({
             status: "completed",
@@ -52,14 +53,14 @@ export async function GET(request: NextRequest) {
           .eq("id", transaction.id);
 
         // 5. Update user balance
-        const { data: profile } = await supabase
+        const { data: profile } = await client
           .from("user_profiles")
           .select("account_balance")
           .eq("id", transaction.user_id)
           .single();
 
         if (profile) {
-          await supabase
+          await client
             .from("user_profiles")
             .update({
               account_balance: profile.account_balance + transaction.amount,

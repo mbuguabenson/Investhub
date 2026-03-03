@@ -24,7 +24,38 @@ export function TopBar() {
     }
     loadProfile()
     
-    // Listen for balance updates if needed (simplified for now)
+    let channel: ReturnType<typeof supabase.channel>
+
+    async function setupRealtime() {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      channel = supabase
+        .channel('public:user_profiles')
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'user_profiles',
+            filter: `id=eq.${user.id}`
+          },
+          (payload) => {
+            const newProfile = payload.new as UserProfile
+            if (newProfile) {
+              setProfile(newProfile)
+            }
+          }
+        )
+        .subscribe()
+    }
+    setupRealtime()
+
+    return () => {
+      if (channel) {
+        supabase.removeChannel(channel)
+      }
+    }
   }, [])
 
   return (
@@ -71,9 +102,14 @@ export function TopBar() {
             <div className="w-7 h-7 bg-gradient-bineo rounded-lg flex items-center justify-center text-white ring-2 ring-background border border-white/10 overflow-hidden shadow-lg">
               {profile?.full_name ? profile.full_name.charAt(0).toUpperCase() : <User size={14} />}
             </div>
-            <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground group-hover:text-foreground transition-colors hidden md:block">
-                {profile?.full_name?.split(' ')[0] || 'Member'}
-            </span>
+            <div className="hidden md:flex flex-col items-start leading-none">
+              <span className="text-[10px] font-black uppercase tracking-widest text-foreground">
+                  {profile?.full_name?.split(' ')[0] || 'Member'}
+              </span>
+              <span className="text-[8px] font-bold text-primary/60 mt-0.5">
+                @{profile?.username || 'user'}
+              </span>
+            </div>
             <ChevronDown size={12} className="text-muted-foreground group-hover:text-foreground transition-colors" />
           </Button>
         </div>

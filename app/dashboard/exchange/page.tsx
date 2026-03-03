@@ -5,10 +5,10 @@ import { getInvestmentPlans } from '@/lib/db'
 import type { InvestmentPlan } from '@/lib/database.types'
 import InvestmentPlansGrid from '@/components/dashboard/investment-plans-grid'
 import { Loader2, TrendingUp, ShieldCheck, Zap } from 'lucide-react'
-import { useTestMode } from '@/hooks/use-test-mode'
+
 
 export default function ExchangePage() {
-  const { isTestMode } = useTestMode()
+
   const [plans, setPlans] = useState<InvestmentPlan[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -66,7 +66,6 @@ export default function ExchangePage() {
             </h2>
             <p className="text-white/80 mt-8 text-lg font-medium leading-relaxed">
               Our AI-driven strategies ensure your capital is always working in the most profitable markets. 
-              {isTestMode ? " (Test Mode: Explore without limits)" : ""}
             </p>
          </div>
       </div>

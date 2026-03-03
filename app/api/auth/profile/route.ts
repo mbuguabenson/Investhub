@@ -31,6 +31,7 @@ export async function POST(request: Request) {
       .insert({
         id: userId,
         full_name: profileData.full_name || "New User",
+        username: profileData.username,
         phone_number: profileData.phone_number,
         id_number: profileData.id_number,
         // Provide defaults for strict DB constraints

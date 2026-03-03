@@ -3,7 +3,7 @@ import { Outfit } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
 import { ThemeProvider } from 'next-themes'
-import { TestModeProvider } from '@/hooks/use-test-mode'
+// Removed TestModeProvider
 
 const outfit = Outfit({ 
   subsets: ["latin"],
@@ -16,6 +16,8 @@ export const metadata: Metadata = {
   description: 'Your premium digital banking and investment partner.',
 }
 
+export const viewport = "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -25,10 +27,8 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={`${outfit.variable} font-sans antialiased selection:bg-primary/30 min-h-screen bg-background text-foreground transition-colors duration-300`}>
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
-          <TestModeProvider>
-            {children}
-            <Analytics />
-          </TestModeProvider>
+          {children}
+          <Analytics />
         </ThemeProvider>
       </body>
     </html>

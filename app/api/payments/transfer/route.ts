@@ -3,7 +3,7 @@ import { createServerSupabase } from "@/lib/supabase-server";
 
 export async function POST(request: NextRequest) {
   try {
-    const { amount, reason, phoneNumber } = await request.json();
+    const { amount, recipientId, recipientName } = await request.json();
     const supabase = await createServerSupabase();
     const {
       data: { user },
@@ -17,9 +17,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid amount" }, { status: 400 });
     }
 
-    if (!phoneNumber) {
+    if (!recipientId) {
       return NextResponse.json(
-        { error: "Phone number is required for withdrawal" },
+        { error: "Recipient is required" },
         { status: 400 },
       );
     }
@@ -38,33 +38,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create withdrawal request
-    const { data: withdrawal, error: wError } = await supabase
-      .from("withdrawal_requests")
-      .insert({
-        user_id: user.id,
-        amount: amount,
-        reason: `[Phone: ${phoneNumber}] ${reason || "Direct Wallet Withdrawal"}`,
-        status: "pending",
-        requested_at: new Date().toISOString(),
-      })
-      .select()
-      .single();
-
-    if (wError) throw wError;
-
-    // Create pending transaction
-    const { error: tError } = await supabase.from("transactions").insert({
-      user_id: user.id,
-      type: "withdrawal",
-      amount: amount,
-      currency: "KES",
-      reference: `Withdrawal: ${withdrawal.id.slice(0, 8)}`,
-      status: "pending",
-    });
-
-    if (tError) throw tError;
-
     // Deduct balance immediately
     const newBalance = profile.account_balance - amount;
     const { error: updateError } = await supabase
@@ -74,9 +47,21 @@ export async function POST(request: NextRequest) {
 
     if (updateError) throw updateError;
 
-    return NextResponse.json({ success: true, withdrawalId: withdrawal.id });
+    // Create completed transaction for transfer out
+    const { error: tError } = await supabase.from("transactions").insert({
+      user_id: user.id,
+      type: "withdrawal", // Treating transfer out as withdrawal for now
+      amount: amount,
+      currency: "KES",
+      reference: `Transfer to ${recipientName || recipientId}`,
+      status: "completed",
+    });
+
+    if (tError) throw tError;
+
+    return NextResponse.json({ success: true, newBalance });
   } catch (error: any) {
-    console.error("Withdrawal error:", error);
+    console.error("Transfer error:", error);
     return NextResponse.json(
       { error: error.message || "Internal server error" },
       { status: 500 },

@@ -11,10 +11,7 @@ import { AlertCircle, Loader2, Chrome, ArrowRight, Star, ShieldCheck } from 'luc
 import { supabase } from '@/lib/supabase'
 import { createUserProfile, checkAccountExists } from '@/lib/db'
 
-const isSupabaseConfigured = () => {
-  return process.env.NEXT_PUBLIC_SUPABASE_URL && 
-         !process.env.NEXT_PUBLIC_SUPABASE_URL.includes('placeholder-url');
-};
+
 
 export default function SignupPage() {
   const router = useRouter()
@@ -23,6 +20,7 @@ export default function SignupPage() {
     password: '',
     confirmPassword: '',
     fullName: '',
+    username: '',
     phoneNumber: '',
     idNumber: '',
   })
@@ -36,11 +34,7 @@ export default function SignupPage() {
   }
 
   const handleGoogleLogin = async () => {
-    if (!isSupabaseConfigured()) {
-      setError('Google Auth requires Supabase configuration. Entering Test Mode...')
-      setTimeout(() => router.push('/dashboard'), 1500)
-      return
-    }
+
 
     try {
       const { error: googleError } = await supabase.auth.signInWithOAuth({
@@ -66,15 +60,7 @@ export default function SignupPage() {
 
     setLoading(true)
 
-    // Handle Unconfigured Supabase (Test Mode)
-    if (!isSupabaseConfigured()) {
-      console.warn('Supabase not configured. Simulating signup for Test Mode.')
-      setTimeout(() => {
-        setLoading(false)
-        router.push('/dashboard')
-      }, 1500)
-      return
-    }
+
 
     try {
       // Check if account with phone or ID already exists
@@ -108,6 +94,7 @@ export default function SignupPage() {
           userId: authData.user.id,
           profileData: {
             full_name: formData.fullName,
+            username: formData.username,
             phone_number: formData.phoneNumber,
             id_number: formData.idNumber,
           }
@@ -208,14 +195,7 @@ export default function SignupPage() {
             </div>
           </div>
 
-          {!isSupabaseConfigured() && (
-            <div className="mb-6 p-4 bg-primary/10 border border-primary/20 rounded-2xl flex gap-3 italic">
-              <Star className="shrink-0 w-5 h-5 text-primary animate-pulse" />
-              <p className="text-primary/80 text-[10px] font-black uppercase tracking-widest leading-relaxed">
-                Running in TEST MODE. Signup will bypass server validation.
-              </p>
-            </div>
-          )}
+
 
           {error && (
             <div className="mb-8 p-4 bg-red-500/10 border border-red-500/50 rounded-2xl flex gap-3 animate-in fade-in zoom-in duration-300">
@@ -232,6 +212,20 @@ export default function SignupPage() {
                 name="fullName"
                 placeholder="YOUR LEGAL NAME"
                 value={formData.fullName}
+                onChange={handleChange}
+                disabled={loading}
+                className="bg-muted/50 border-border/20 rounded-2xl h-14 focus:ring-primary/50 text-xs font-bold uppercase tracking-widest text-foreground placeholder-muted-foreground/20"
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="username" className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60 ml-2">Unique Username</Label>
+              <Input
+                id="username"
+                name="username"
+                placeholder="YOUR_NICKNAME"
+                value={formData.username}
                 onChange={handleChange}
                 disabled={loading}
                 className="bg-muted/50 border-border/20 rounded-2xl h-14 focus:ring-primary/50 text-xs font-bold uppercase tracking-widest text-foreground placeholder-muted-foreground/20"
