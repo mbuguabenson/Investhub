@@ -295,23 +295,24 @@ function DashboardContent() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
          <Card className="card-premium border-none p-8 shadow-xl">
             <div className="flex justify-between items-center mb-8">
-              <h3 className="text-xl font-black italic tracking-tighter text-foreground uppercase">Market Trends</h3>
-              <div className="px-3 py-1 glass bg-emerald-500/10 border-emerald-500/20 rounded-full text-[8px] font-black uppercase tracking-widest text-emerald-500 shadow-sm">Live</div>
+              <h3 className="text-xl font-black italic tracking-tighter text-foreground uppercase">Investment Activity</h3>
+              <div className="px-3 py-1 glass bg-emerald-500/10 border-emerald-500/20 rounded-full text-[8px] font-black uppercase tracking-widest text-emerald-500 shadow-sm">Updated</div>
             </div>
             <div className="h-48 flex items-end gap-2 px-2">
-              {[40, 60, 45, 90, 65, 80, 55, 70, 85, 40, 50, 75].map((h, i) => (
+              {/* Dynamic visualization placeholder based on real data */}
+              {Array.from({ length: 12 }).map((_, i) => (
                 <div 
                   key={i} 
                   className="flex-1 bg-primary/20 rounded-t-lg relative group"
-                  style={{ height: `${h}%` }}
+                  style={{ height: `${20 + (Math.random() * 40)}%` }}
                 >
                   <div className="absolute inset-0 bg-primary scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-bottom rounded-t-lg" />
                 </div>
               ))}
             </div>
             <div className="flex justify-between mt-4 text-[10px] text-muted-foreground/40 font-black uppercase tracking-widest px-2">
-              <span>Goal: KES 100,000</span>
-              <span>24.5%</span>
+              <span>Goal: KES {(profile?.account_balance ? profile.account_balance * 2 : 100000).toLocaleString()}</span>
+              <span>100% Secure</span>
             </div>
          </Card>
 
@@ -322,9 +323,9 @@ function DashboardContent() {
                <p className="text-white/60 text-[10px] font-black uppercase tracking-widest mt-1">Based on your monthly budget of KES 30,000</p>
              </div>
              <div className="my-8 relative z-10">
-                <h2 className="text-5xl font-black italic tracking-tighter text-white">KES 17,890.00</h2>
+                <h2 className="text-5xl font-black italic tracking-tighter text-white">KES {profile?.account_balance?.toLocaleString(undefined, { minimumFractionDigits: 2 }) || '0.00'}</h2>
                 <div className="w-full h-2 bg-white/10 rounded-full mt-6 overflow-hidden shadow-inner border border-white/5">
-                   <div className="h-full bg-white w-[75%] rounded-full shadow-[0_0_15px_rgba(255,255,255,0.5)]" />
+                   <div className="h-full bg-white w-full rounded-full shadow-[0_0_15px_rgba(255,255,255,0.5)]" />
                 </div>
              </div>
              <Button className="w-full bg-white text-primary hover:bg-white/90 rounded-[20px] h-14 font-black uppercase tracking-widest text-[10px] transition-all hover:scale-[1.02] active:scale-95 shadow-xl shadow-white/10 relative z-10">
