@@ -61,7 +61,7 @@ export function TopBar() {
   return (
     <header className="sticky top-0 z-30 w-full bg-background/60 backdrop-blur-xl border-b border-border/20 px-6 py-4">
       <div className="max-w-7xl mx-auto flex items-center justify-between">
-        <div className="flex items-center gap-4 flex-1">
+        <div className="flex items-center gap-2 sm:gap-4 flex-1">
           <div className="relative group hidden sm:block w-64">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
             <input 
@@ -74,7 +74,7 @@ export function TopBar() {
 
         <div className="flex items-center gap-3 sm:gap-6">
           {/* Balance Display */}
-          <div className="flex items-center gap-3 bg-primary/5 border border-primary/10 px-4 py-2 rounded-2xl shadow-sm">
+          <div className="flex items-center gap-1.5 sm:gap-3 bg-primary/5 border border-primary/10 px-2 sm:px-4 py-2 rounded-2xl shadow-sm">
             <div className="w-8 h-8 bg-primary/20 rounded-xl flex items-center justify-center text-primary">
               <Wallet size={18} />
             </div>
@@ -102,11 +102,11 @@ export function TopBar() {
             <div className="w-7 h-7 bg-gradient-bineo rounded-lg flex items-center justify-center text-white ring-2 ring-background border border-white/10 overflow-hidden shadow-lg">
               {profile?.full_name ? profile.full_name.charAt(0).toUpperCase() : <User size={14} />}
             </div>
-            <div className="hidden md:flex flex-col items-start leading-none">
-              <span className="text-[10px] font-black uppercase tracking-widest text-foreground">
+            <div className="flex flex-col items-start leading-none">
+              <span className="text-[10px] font-black uppercase tracking-widest text-foreground max-w-[60px] sm:max-w-none truncate">
                   {profile?.full_name?.split(' ')[0] || 'Member'}
               </span>
-              <span className="text-[8px] font-bold text-primary/60 mt-0.5">
+              <span className="text-[8px] font-bold text-primary/60 mt-0.5 max-w-[50px] sm:max-w-none truncate">
                 @{profile?.username || 'user'}
               </span>
             </div>

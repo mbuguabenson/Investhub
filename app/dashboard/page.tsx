@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -19,6 +19,8 @@ import { cn } from '@/lib/utils'
 
 export default function DashboardPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const depositStatus = searchParams.get('status')
   const [user, setUser] = useState<any>(null)
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [investments, setInvestments] = useState<Investment[]>([])
@@ -74,7 +76,27 @@ export default function DashboardPage() {
     }
 
     initializeDashboard()
-  }, [router])
+  }, [router, depositStatus])
+
+  useEffect(() => {
+    // If we just got a 'completed' status, re-fetch profile every few seconds for a bit
+    // to catch the webhook update if it hasn't landed yet
+    if (depositStatus === 'completed') {
+      const interval = setInterval(async () => {
+        const { data: { user: currentUser } } = await supabase.auth.getUser()
+        if (currentUser) {
+          const userProfile = await getUserProfile(currentUser.id)
+          if (userProfile) setProfile(userProfile)
+        }
+      }, 3000)
+      
+      const timeout = setTimeout(() => clearInterval(interval), 15000)
+      return () => {
+        clearInterval(interval)
+        clearTimeout(timeout)
+      }
+    }
+  }, [depositStatus])
 
   if (loading) {
     return (
@@ -92,6 +114,13 @@ export default function DashboardPage() {
           <h1 className="text-3xl font-black italic tracking-tighter text-foreground">Hello, {profile?.full_name?.split(' ')[0] || 'User'}! 👋</h1>
           <p className="text-muted-foreground text-sm font-bold uppercase tracking-widest mt-1">Welcome back to your premium dashboard.</p>
         </div>
+        
+        {depositStatus === 'completed' && (
+          <div className="bg-emerald-500/10 border border-emerald-500/20 px-4 py-2 rounded-xl flex items-center gap-2 animate-pulse">
+            <div className="w-2 h-2 bg-emerald-500 rounded-full" />
+            <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Deposit Received - Updating Balance</span>
+          </div>
+        )}
         
         <div className="flex items-center gap-4 bg-muted/50 p-2 rounded-2xl border border-border/20">
 

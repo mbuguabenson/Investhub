@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import {
@@ -23,6 +24,8 @@ import { getUserProfile } from '@/lib/db'
 import type { UserProfile } from '@/lib/database.types'
 
 export default function WalletPage() {
+  const searchParams = useSearchParams()
+  const depositStatus = searchParams.get('status')
 
   const [isDepositOpen, setIsDepositOpen] = useState(false)
   const [isTransferOpen, setIsTransferOpen] = useState(false)
@@ -56,6 +59,25 @@ export default function WalletPage() {
     }
   }, [])
 
+  useEffect(() => {
+    // Auto-refresh for deposit success
+    if (depositStatus === 'completed') {
+      const interval = setInterval(async () => {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user) {
+          const profileData = await getUserProfile(user.id)
+          if (profileData) setProfile(profileData)
+        }
+      }, 3000)
+      
+      const timeout = setTimeout(() => clearInterval(interval), 15000)
+      return () => {
+        clearInterval(interval)
+        clearTimeout(timeout)
+      }
+    }
+  }, [depositStatus])
+
   const accountId = 'IH-7782-9910-4589'
 
   const handleCopy = () => {
@@ -71,6 +93,13 @@ export default function WalletPage() {
           <h1 className="text-3xl font-black italic tracking-tighter text-foreground">My Wallet</h1>
           <p className="text-muted-foreground text-sm font-bold uppercase tracking-widest mt-1">Manage your funds and connected accounts.</p>
         </div>
+
+        {depositStatus === 'completed' && (
+          <div className="bg-emerald-500/10 border border-emerald-500/20 px-4 py-2 rounded-xl flex items-center gap-2 animate-pulse">
+            <div className="w-2 h-2 bg-emerald-500 rounded-full" />
+            <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Deposit Successful! Updating balance...</span>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
