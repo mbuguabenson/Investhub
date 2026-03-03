@@ -115,7 +115,11 @@ function WalletContent() {
           async (payload) => {
             console.log('Wallet: Profile update detected, re-fetching...')
             const data = await getUserProfile(currentUser.id)
-            if (data) setProfile(data)
+            if (data) {
+              setProfile(data)
+              // Notify TopBar
+              if (typeof window !== 'undefined') (window as any).refreshTopBarBalance?.()
+            }
           }
         )
         .subscribe()

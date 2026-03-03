@@ -104,6 +104,9 @@ function DashboardContent() {
         setError('Failed to load dashboard')
       } finally {
         setLoading(false)
+        console.log('Post-deposit refresh polling...')
+        // Notify TopBar
+        if (typeof window !== 'undefined') (window as any).refreshTopBarBalance?.()
       }
     }
 
@@ -132,7 +135,11 @@ function DashboardContent() {
           async (payload) => {
             console.log('Dashboard: Profile update detected, re-fetching...')
             const data = await getUserProfile(currentUser.id)
-            if (data) setProfile(data)
+            if (data) {
+              setProfile(data)
+              // Notify TopBar
+              if (typeof window !== 'undefined') (window as any).refreshTopBarBalance?.()
+            }
           }
         )
         .subscribe()

@@ -13,8 +13,18 @@ export function TopBar() {
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
 
+  // Explicit re-fetch function for external triggers
+  const refreshProfile = async () => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) {
+      const data = await getUserProfile(user.id)
+      if (data) setProfile(data)
+    }
+  }
+
   useEffect(() => {
     let channel: ReturnType<typeof supabase.channel>
+    let pollInterval: NodeJS.Timeout
 
     async function loadData(userId: string) {
       console.log('TopBar: Loading profile for', userId)
@@ -49,13 +59,23 @@ export function TopBar() {
       setLoading(false)
     }
 
+    // Add global refresh listener
+    (window as any).refreshTopBarBalance = refreshProfile
+
     // Handle initial session and auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('TopBar: Auth event:', event)
       if (session?.user) {
         loadData(session.user.id)
         
-        // Setup real-time listener if not already there or if user changed
+        // Polling fallback (every 30 seconds)
+        if (pollInterval) clearInterval(pollInterval)
+        pollInterval = setInterval(() => {
+          console.log('TopBar: Polling profile...')
+          loadData(session.user.id)
+        }, 30000)
+        
+        // Setup real-time listener
         if (channel) supabase.removeChannel(channel)
         
         channel = supabase
@@ -70,14 +90,12 @@ export function TopBar() {
             },
             async () => {
               console.log('TopBar: Real-time update detected')
-              const updatedData = await getUserProfile(session.user.id)
-              if (updatedData) setProfile(updatedData)
+              loadData(session.user.id)
             }
           )
-          .subscribe((status) => {
-            console.log(`TopBar: Real-time status for ${session.user.id}:`, status)
-          })
+          .subscribe()
       } else {
+        if (pollInterval) clearInterval(pollInterval)
         setProfile(null)
         setLoading(false)
       }
@@ -86,6 +104,8 @@ export function TopBar() {
     return () => {
       subscription.unsubscribe()
       if (channel) supabase.removeChannel(channel)
+      if (pollInterval) clearInterval(pollInterval)
+      delete (window as any).refreshTopBarBalance
     }
   }, [])
 
