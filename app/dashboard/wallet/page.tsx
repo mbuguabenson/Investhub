@@ -15,7 +15,8 @@ import {
   Check,
   Loader2,
   ArrowDownLeft,
-  DollarSign
+  DollarSign,
+  AlertCircle
 } from 'lucide-react'
 import { WalletCard } from '@/components/dashboard/wallet-card'
 import { DepositModal } from '@/components/dashboard/deposit-modal'
@@ -27,71 +28,44 @@ import { getUserProfile, getUserTransactions } from '@/lib/db'
 import type { UserProfile, Transaction } from '@/lib/database.types'
 import { cn } from '@/lib/utils'
 
-function WalletContent() {
+interface WalletContentProps {
+  profile: UserProfile | null
+  setProfile: (p: UserProfile | null) => void
+  transactions: Transaction[]
+  setTransactions: (t: Transaction[]) => void
+  isDepositOpen: boolean
+  setIsDepositOpen: (o: boolean) => void
+  isTransferOpen: boolean
+  setIsTransferOpen: (o: boolean) => void
+  isWithdrawOpen: boolean
+  setIsWithdrawOpen: (o: boolean) => void
+}
+
+function WalletContent({
+  profile,
+  setProfile,
+  transactions,
+  setTransactions,
+  isDepositOpen,
+  setIsDepositOpen,
+  isTransferOpen,
+  setIsTransferOpen,
+  isWithdrawOpen,
+  setIsWithdrawOpen
+}: WalletContentProps) {
   const searchParams = useSearchParams()
   const depositStatus = searchParams.get('status')
 
-  const [isDepositOpen, setIsDepositOpen] = useState(false)
-  const [isTransferOpen, setIsTransferOpen] = useState(false)
-  const [isWithdrawOpen, setIsWithdrawOpen] = useState(false)
-  const [profile, setProfile] = useState<UserProfile | null>(null)
-  const [transactions, setTransactions] = useState<Transaction[]>([])
   const [copied, setCopied] = useState(false)
-  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     // Add global listener for withdrawal button in WalletCard
     (window as any).dispatchWithdrawal = () => setIsWithdrawOpen(true)
 
-    const fetchData = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser()
-        if (user) {
-          let profileData = await getUserProfile(user.id)
-
-          // Auto-initialize profile if missing
-          if (!profileData) {
-            console.log('Wallet: Profile missing, auto-initializing...')
-            try {
-              const response = await fetch('/api/auth/profile', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  userId: user.id,
-                  profileData: {
-                    full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'Investor',
-                    username: user.user_metadata?.full_name?.toLowerCase().replace(/\s+/g, '_') || `user_${user.id.slice(0, 5)}`,
-                    phone_number: 'PENDING',
-                    id_number: 'PENDING',
-                  }
-                })
-              })
-              if (response.ok) {
-                const initResult = await response.json()
-                profileData = initResult.profile
-              }
-            } catch (initErr) {
-              console.error('Wallet: Failed to auto-init profile:', initErr)
-            }
-          }
-
-          const transactionsData = await getUserTransactions(user.id)
-          setProfile(profileData)
-          setTransactions(transactionsData.slice(0, 5))
-        }
-      } catch (error: any) {
-        console.error('Error fetching data:', error)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchData()
-
     return () => {
       delete (window as any).dispatchWithdrawal
     }
-  }, [])
+  }, [setIsWithdrawOpen])
 
   useEffect(() => {
     let profileChannel: any
@@ -113,7 +87,6 @@ function WalletContent() {
             filter: `id=eq.${currentUser.id}`
           },
           async (payload) => {
-            console.log('Wallet: Profile update detected, re-fetching...')
             const data = await getUserProfile(currentUser.id)
             if (data) {
               setProfile(data)
@@ -136,9 +109,8 @@ function WalletContent() {
             filter: `user_id=eq.${currentUser.id}`
           },
           async () => {
-            console.log('Real-time wallet transaction update')
             const latest = await getUserTransactions(currentUser.id)
-            setTransactions(latest.slice(0, 5))
+            setTransactions(latest ? latest.slice(0, 5) : [])
           }
         )
         .subscribe()
@@ -150,7 +122,7 @@ function WalletContent() {
       if (profileChannel) supabase.removeChannel(profileChannel)
       if (transactionChannel) supabase.removeChannel(transactionChannel)
     }
-  }, [])
+  }, [setProfile, setTransactions])
 
   const accountId = profile ? `IH-${profile.id.slice(0, 4).toUpperCase()}-${profile.id.slice(4, 8).toUpperCase()}-${profile.id.slice(8, 12).toUpperCase()}` : 'IH-PENDING'
 
@@ -216,23 +188,23 @@ function WalletContent() {
           <Card className="card-premium border-border/20 p-8 space-y-8">
             <div className="flex justify-between items-center">
               <h3 className="text-xl font-black italic tracking-tighter text-foreground uppercase">Recent Transactions</h3>
-              <Button 
-                variant="link" 
+              <Button
+                variant="link"
                 className="text-primary text-[10px] font-black uppercase tracking-widest p-0"
                 onClick={() => (window as any).location.href = '/dashboard/transactions'}
               >
                 View All
               </Button>
             </div>
-            
+
             <div className="space-y-6">
               {transactions.length > 0 ? (
-                transactions.map((transaction) => (
+                transactions.map((transaction: any) => (
                   <div key={transaction.id} className="flex items-center justify-between group cursor-pointer" onClick={() => (window as any).location.href = '/dashboard/transactions'}>
                     <div className="flex items-center gap-5">
                       <div className="bg-muted/50 border border-border/20 p-3 rounded-xl group-hover:bg-primary/10 transition-colors">
-                        {transaction.type === 'deposit' ? <ArrowDownLeft className="w-5 h-5 text-emerald-500" /> : 
-                         transaction.type === 'withdrawal' ? <ArrowUpRight className="w-5 h-5 text-red-500" /> : 
+                        {transaction.type === 'deposit' ? <ArrowDownLeft className="w-5 h-5 text-emerald-500" /> :
+                         transaction.type === 'withdrawal' ? <ArrowUpRight className="w-5 h-5 text-red-500" /> :
                          <DollarSign className="w-5 h-5 text-blue-500" />}
                       </div>
                       <div>
@@ -300,9 +272,9 @@ function WalletContent() {
         </div>
       </div>
 
-      <DepositModal 
-        isOpen={isDepositOpen} 
-        onClose={() => setIsDepositOpen(false)} 
+      <DepositModal
+        isOpen={isDepositOpen}
+        onClose={() => setIsDepositOpen(false)}
         initialPhoneNumber={profile?.phone_number}
       />
       <TransferModal isOpen={isTransferOpen} onClose={() => setIsTransferOpen(false)} />
@@ -317,14 +289,110 @@ function WalletContent() {
 }
 
 export default function WalletPage() {
+  const [profile, setProfile] = useState<UserProfile | null>(null)
+  const [transactions, setTransactions] = useState<Transaction[]>([])
+  const [isDepositOpen, setIsDepositOpen] = useState(false)
+  const [isTransferOpen, setIsTransferOpen] = useState(false)
+  const [isWithdrawOpen, setIsWithdrawOpen] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [currentStep, setCurrentStep] = useState('Starting...')
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setCurrentStep('Verifying Session...')
+      const timeout = setTimeout(() => {
+        if (loading) setError('Connection timed out after 15s')
+      }, 15000)
+
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user) {
+          setCurrentStep('Accessing Profile...')
+          let profileData = await getUserProfile(user.id)
+
+          if (!profileData) {
+            setCurrentStep('Creating New Profile...')
+            const response = await fetch('/api/auth/profile', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                userId: user.id,
+                profileData: {
+                  full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'Investor',
+                  username: `user_${user.id.slice(0, 5)}`,
+                  phone_number: 'PENDING',
+                  id_number: 'PENDING',
+                }
+              })
+            })
+            if (response.ok) {
+              const res = await response.json()
+              profileData = res.profile
+            }
+          }
+
+          setCurrentStep('Fetching Transactions...')
+          const transactionsData = await getUserTransactions(user.id)
+          setProfile(profileData)
+          setTransactions(transactionsData || [])
+        }
+      } catch (err: any) {
+        console.error('Wallet fetch error:', err)
+        setError(err.message || 'Failed to sync wallet')
+      } finally {
+        clearTimeout(timeout)
+        setLoading(false)
+      }
+    }
+
+    fetchData()
+  }, [])
+
+  if (loading && !error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[60vh] gap-4 text-center px-4">
+        <Loader2 className="w-8 h-8 text-primary animate-spin" />
+        <p className="text-muted-foreground text-[10px] font-black uppercase tracking-widest animate-pulse font-bold">Syncing Wallet Data...</p>
+        <p className="text-[8px] font-bold text-muted-foreground/40 uppercase tracking-[0.2em]">{currentStep}</p>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[60vh] gap-6 text-center px-4">
+        <AlertCircle className="w-12 h-12 text-red-500" />
+        <div>
+          <h2 className="text-2xl font-black italic tracking-tighter text-foreground uppercase">Wallet Sync Error</h2>
+          <p className="text-muted-foreground text-[10px] font-black uppercase tracking-widest mt-2 font-bold">{error}</p>
+        </div>
+        <Button onClick={() => window.location.reload()} className="bg-primary hover:bg-primary/90 h-12 px-8 rounded-2xl text-[10px] font-black uppercase tracking-widest">
+          Retry Sync
+        </Button>
+      </div>
+    )
+  }
+
   return (
     <Suspense fallback={
       <div className="flex flex-col items-center justify-center h-[60vh] gap-4">
         <Loader2 className="w-8 h-8 text-primary animate-spin" />
-        <p className="text-muted-foreground text-[10px] font-black uppercase tracking-widest animate-pulse">Syncing Wallet Data...</p>
+        <p className="text-muted-foreground text-[10px] font-black uppercase tracking-widest animate-pulse font-bold">Loading Wallet...</p>
       </div>
     }>
-      <WalletContent />
+      <WalletContent
+        profile={profile}
+        setProfile={setProfile}
+        transactions={transactions}
+        setTransactions={setTransactions}
+        isDepositOpen={isDepositOpen}
+        setIsDepositOpen={setIsDepositOpen}
+        isTransferOpen={isTransferOpen}
+        setIsTransferOpen={setIsTransferOpen}
+        isWithdrawOpen={isWithdrawOpen}
+        setIsWithdrawOpen={setIsWithdrawOpen}
+      />
     </Suspense>
   )
 }

@@ -23,6 +23,7 @@ function DashboardContent() {
   const depositStatus = searchParams.get('status')
   const [user, setUser] = useState<any>(null)
   const [profile, setProfile] = useState<UserProfile | null>(null)
+  const [currentStep, setCurrentStep] = useState('Starting...')
   const [investments, setInvestments] = useState<Investment[]>([])
   const [plans, setPlans] = useState<InvestmentPlan[]>([])
   const [transactions, setTransactions] = useState<Transaction[]>([])
@@ -36,32 +37,29 @@ function DashboardContent() {
   useEffect(() => {
     const initializeDashboard = async () => {
       console.log('Initializing Dashboard...')
+      setCurrentStep('Verifying Session...')
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Initialization Timeout (15s)')), 15000)
+      )
+
       try {
-        const {
-          data: { user: currentUser },
-          error: userError,
-        } = await Promise.race([
-          supabase.auth.getUser(),
-          new Promise<any>((_, reject) => setTimeout(() => reject(new Error('Auth timeout')), 10000))
-        ])
+        const initPromise = (async () => {
+          const {
+            data: { user: currentUser },
+            error: userError,
+          } = await supabase.auth.getUser()
 
-        console.log('Dashboard Auth check:', { user: !!currentUser, id: currentUser?.id, error: userError })
+          if (!currentUser) {
+            router.push('/auth/login')
+            return
+          }
+          setUser(currentUser)
 
-        if (!currentUser) {
-          console.log('No user found, redirecting to login...')
-          router.push('/auth/login')
-          return
-        }
+          setCurrentStep('Accessing Profile...')
+          let userProfile = await getUserProfile(currentUser.id)
 
-        setUser(currentUser)
-
-        console.log('Fetching profile and data...')
-        let userProfile = currentUser ? await getUserProfile(currentUser.id) : null
-
-        // Auto-initialize profile if missing (common for Google OAuth)
-        if (currentUser && !userProfile) {
-          console.log('Profile missing, auto-initializing...')
-          try {
+          if (!userProfile) {
+            setCurrentStep('Creating New Profile...')
             const response = await fetch('/api/auth/profile', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -69,51 +67,39 @@ function DashboardContent() {
                 userId: currentUser.id,
                 profileData: {
                   full_name: currentUser.user_metadata?.full_name || currentUser.email?.split('@')[0] || 'Investor',
-                  username: currentUser.user_metadata?.full_name?.toLowerCase().replace(/\s+/g, '_') || `user_${currentUser.id.slice(0, 5)}`,
+                  username: `user_${currentUser.id.slice(0, 5)}`,
                   phone_number: 'PENDING',
                   id_number: 'PENDING',
                 }
               })
             })
             if (response.ok) {
-              const initResult = await response.json()
-              userProfile = initResult.profile
-              console.log('Profile auto-initialized successfully')
+              const res = await response.json()
+              userProfile = res.profile
             }
-          } catch (initErr) {
-            console.error('Failed to auto-initialize profile:', initErr)
           }
-        }
 
-        const [userInvestments, investmentPlans, userTransactions] = await Promise.all([
-          currentUser ? getUserInvestments(currentUser.id) : [],
-          getInvestmentPlans(),
-          currentUser ? getUserTransactions(currentUser.id) : [],
-        ])
+          setCurrentStep('Fetching Financial Data...')
+          const [userInvestments, investmentPlans, userTransactions] = await Promise.all([
+            getUserInvestments(currentUser.id),
+            getInvestmentPlans(),
+            getUserTransactions(currentUser.id),
+          ])
 
-        console.log('Data fetched:', { 
-          profile: !!userProfile, 
-          investments: userInvestments.length, 
-          plans: investmentPlans.length,
-          transactions: userTransactions.length
-        })
+          setProfile(userProfile)
+          setInvestments(userInvestments)
+          setPlans(investmentPlans)
+          setTransactions(userTransactions ? userTransactions.slice(0, 3) : [])
+          return true
+        })()
 
-        setProfile(userProfile)
-        setInvestments(userInvestments)
-        setPlans(investmentPlans)
+        await Promise.race([initPromise, timeoutPromise])
         
-        if (userTransactions && Array.isArray(userTransactions)) {
-          setTransactions(userTransactions.slice(0, 3))
-        } else {
-          setTransactions([])
-        }
       } catch (err: any) {
-        console.error('Error initializing dashboard:', err)
+        console.error('Initialization error:', err)
         setError(err.message || 'Failed to load dashboard data')
       } finally {
         setLoading(false)
-        console.log('Dashboard initialization complete.')
-        // Notify TopBar
         if (typeof window !== 'undefined') (window as any).refreshTopBarBalance?.()
       }
     }
@@ -207,6 +193,7 @@ function DashboardContent() {
       <div className="flex flex-col items-center justify-center h-[60vh] gap-4">
         <Loader2 className="w-8 h-8 text-primary animate-spin" />
         <p className="text-muted-foreground text-[10px] font-black uppercase tracking-widest animate-pulse">Establishing Secure Connection...</p>
+        <p className="text-[8px] font-bold text-muted-foreground/40 uppercase tracking-[0.2em]">{currentStep}</p>
       </div>
     )
   }

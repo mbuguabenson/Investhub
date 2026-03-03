@@ -16,15 +16,26 @@ const iconMap: Record<string, any> = {
 export function PocketsGrid() {
   const [pockets, setPockets] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [status, setStatus] = useState('Connecting...')
 
   useEffect(() => {
     async function loadPockets() {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (user) {
-        const data = await getPockets(user.id)
-        setPockets(data)
+      try {
+        const { data: { user } } = await Promise.race([
+          supabase.auth.getUser(),
+          new Promise<any>((_, reject) => setTimeout(() => reject(new Error('Pockets timeout')), 8000))
+        ])
+
+        if (user) {
+          setStatus('Loading Assets...')
+          const data = await getPockets(user.id)
+          setPockets(data || [])
+        }
+      } catch (e) {
+        console.error('Pockets load error:', e)
+      } finally {
+        setLoading(false)
       }
-      setLoading(false)
     }
     loadPockets()
   }, [])
