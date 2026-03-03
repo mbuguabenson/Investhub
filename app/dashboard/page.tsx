@@ -53,8 +53,36 @@ function DashboardContent() {
         setUser(currentUser)
 
         console.log('Fetching profile and data...')
-        const [userProfile, userInvestments, investmentPlans, userTransactions] = await Promise.all([
-          currentUser ? getUserProfile(currentUser.id) : null,
+        let userProfile = currentUser ? await getUserProfile(currentUser.id) : null
+
+        // Auto-initialize profile if missing (common for Google OAuth)
+        if (currentUser && !userProfile) {
+          console.log('Profile missing, auto-initializing...')
+          try {
+            const response = await fetch('/api/auth/profile', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                userId: currentUser.id,
+                profileData: {
+                  full_name: currentUser.user_metadata?.full_name || currentUser.email?.split('@')[0] || 'Investor',
+                  username: currentUser.user_metadata?.full_name?.toLowerCase().replace(/\s+/g, '_') || `user_${currentUser.id.slice(0, 5)}`,
+                  phone_number: 'PENDING',
+                  id_number: 'PENDING',
+                }
+              })
+            })
+            if (response.ok) {
+              const initResult = await response.json()
+              userProfile = initResult.profile
+              console.log('Profile auto-initialized successfully')
+            }
+          } catch (initErr) {
+            console.error('Failed to auto-initialize profile:', initErr)
+          }
+        }
+
+        const [userInvestments, investmentPlans, userTransactions] = await Promise.all([
           currentUser ? getUserInvestments(currentUser.id) : [],
           getInvestmentPlans(),
           currentUser ? getUserTransactions(currentUser.id) : [],

@@ -17,7 +17,33 @@ export function TopBar() {
     async function loadProfile() {
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
-        const data = await getUserProfile(user.id)
+        let data = await getUserProfile(user.id)
+        
+        // Auto-initialize if missing
+        if (!data) {
+          try {
+            const response = await fetch('/api/auth/profile', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                userId: user.id,
+                profileData: {
+                  full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'Member',
+                  username: user.user_metadata?.full_name?.toLowerCase().replace(/\s+/g, '_') || `user_${user.id.slice(0, 5)}`,
+                  phone_number: 'PENDING',
+                  id_number: 'PENDING',
+                }
+              })
+            })
+            if (response.ok) {
+              const initResult = await response.json()
+              data = initResult.profile
+            }
+          } catch (e) {
+            console.error('TopBar: Failed to auto-init profile:', e)
+          }
+        }
+        
         setProfile(data)
       }
       setLoading(false)

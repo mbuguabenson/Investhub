@@ -47,12 +47,37 @@ function WalletContent() {
       try {
         const { data: { user } } = await supabase.auth.getUser()
         if (user) {
-          const [profileData, transactionsData] = await Promise.all([
-            getUserProfile(user.id),
-            getUserTransactions(user.id)
-          ])
+          let profileData = await getUserProfile(user.id)
+
+          // Auto-initialize profile if missing
+          if (!profileData) {
+            console.log('Wallet: Profile missing, auto-initializing...')
+            try {
+              const response = await fetch('/api/auth/profile', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  userId: user.id,
+                  profileData: {
+                    full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'Investor',
+                    username: user.user_metadata?.full_name?.toLowerCase().replace(/\s+/g, '_') || `user_${user.id.slice(0, 5)}`,
+                    phone_number: 'PENDING',
+                    id_number: 'PENDING',
+                  }
+                })
+              })
+              if (response.ok) {
+                const initResult = await response.json()
+                profileData = initResult.profile
+              }
+            } catch (initErr) {
+              console.error('Wallet: Failed to auto-init profile:', initErr)
+            }
+          }
+
+          const transactionsData = await getUserTransactions(user.id)
           setProfile(profileData)
-          setTransactions(transactionsData.slice(0, 5)) // Show last 5
+          setTransactions(transactionsData.slice(0, 5))
         }
       } catch (error) {
         console.error('Error fetching data:', error)
