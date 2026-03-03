@@ -14,73 +14,78 @@ export function TopBar() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    async function loadProfile() {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (user) {
-        let data = await getUserProfile(user.id)
-        
-        // Auto-initialize if missing
-        if (!data) {
-          try {
-            const response = await fetch('/api/auth/profile', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                userId: user.id,
-                profileData: {
-                  full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'Member',
-                  username: user.user_metadata?.full_name?.toLowerCase().replace(/\s+/g, '_') || `user_${user.id.slice(0, 5)}`,
-                  phone_number: 'PENDING',
-                  id_number: 'PENDING',
-                }
-              })
-            })
-            if (response.ok) {
-              const initResult = await response.json()
-              data = initResult.profile
-            }
-          } catch (e) {
-            console.error('TopBar: Failed to auto-init profile:', e)
-          }
-        }
-        
-        setProfile(data)
-      }
-      setLoading(false)
-    }
-    loadProfile()
-    
     let channel: ReturnType<typeof supabase.channel>
 
-    async function setupRealtime() {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
-
-      channel = supabase
-        .channel('public:user_profiles')
-        .on(
-          'postgres_changes',
-          {
-            event: 'UPDATE',
-            schema: 'public',
-            table: 'user_profiles',
-            filter: `id=eq.${user.id}`
-          },
-          (payload) => {
-            const newProfile = payload.new as UserProfile
-            if (newProfile) {
-              setProfile(newProfile)
-            }
+    async function loadData(userId: string) {
+      console.log('TopBar: Loading profile for', userId)
+      let data = await getUserProfile(userId)
+      
+      // Auto-initialize if missing
+      if (!data) {
+        try {
+          const response = await fetch('/api/auth/profile', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              userId: userId,
+              profileData: {
+                full_name: 'Member',
+                username: `user_${userId.slice(0, 5)}`,
+                phone_number: 'PENDING',
+                id_number: 'PENDING',
+              }
+            })
+          })
+          if (response.ok) {
+            const initResult = await response.json()
+            data = initResult.profile
           }
-        )
-        .subscribe()
+        } catch (e) {
+          console.error('TopBar: Failed to auto-init profile:', e)
+        }
+      }
+      
+      setProfile(data)
+      setLoading(false)
     }
-    setupRealtime()
+
+    // Handle initial session and auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('TopBar: Auth event:', event)
+      if (session?.user) {
+        loadData(session.user.id)
+        
+        // Setup real-time listener if not already there or if user changed
+        if (channel) supabase.removeChannel(channel)
+        
+        channel = supabase
+          .channel(`topbar_realtime_${session.user.id}`)
+          .on(
+            'postgres_changes',
+            {
+              event: 'UPDATE',
+              schema: 'public',
+              table: 'user_profiles',
+              filter: `id=eq.${session.user.id}`
+            },
+            async () => {
+              console.log('TopBar: Real-time update detected')
+              const updatedData = await getUserProfile(session.user.id)
+              if (updatedData) setProfile(updatedData)
+            }
+          )
+          .subscribe((status) => {
+            console.log(`TopBar: Real-time status for ${session.user.id}:`, status)
+          })
+      } else {
+        setProfile(null)
+        setLoading(false)
+      }
+    })
 
     return () => {
-      if (channel) {
-        supabase.removeChannel(channel)
-      }
+      subscription.unsubscribe()
+      if (channel) supabase.removeChannel(channel)
     }
   }, [])
 
@@ -107,7 +112,7 @@ export function TopBar() {
             <div className="flex flex-col">
               <span className="text-[8px] font-black uppercase tracking-[0.2em] text-muted-foreground/60 leading-none mb-1">Available Balance</span>
               <span className="text-sm font-black italic tracking-tighter text-foreground leading-none">
-                KES {profile?.account_balance?.toLocaleString() || '0.00'}
+                KES {profile?.account_balance?.toLocaleString(undefined, { minimumFractionDigits: 2 }) || '0.00'}
               </span>
             </div>
             <Button size="icon" variant="ghost" className="h-6 w-6 rounded-full hover:bg-primary/20 transition-colors ml-1">

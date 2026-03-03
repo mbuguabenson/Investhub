@@ -112,9 +112,10 @@ function WalletContent() {
             table: 'user_profiles',
             filter: `id=eq.${currentUser.id}`
           },
-          (payload) => {
-            console.log('Real-time wallet profile update:', payload.new)
-            setProfile(payload.new as UserProfile)
+          async (payload) => {
+            console.log('Wallet: Profile update detected, re-fetching...')
+            const data = await getUserProfile(currentUser.id)
+            if (data) setProfile(data)
           }
         )
         .subscribe()

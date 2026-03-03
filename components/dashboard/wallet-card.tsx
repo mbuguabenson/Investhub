@@ -30,7 +30,7 @@ export function WalletCard({ balance, currency = 'KES', onDeposit, onTransfer }:
             </button>
           </p>
           <h2 className="text-3xl md:text-5xl font-black italic tracking-tighter text-white">
-            {showBalance ? `KES ${balance.toLocaleString('en-US', { minimumFractionDigits: 2 })}` : '••••••••'}
+            {showBalance ? `KES ${balance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '••••••••'}
           </h2>
         </div>
         <div className="p-2 glass border-white/20 rounded-full">

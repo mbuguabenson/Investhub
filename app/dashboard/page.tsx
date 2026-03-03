@@ -129,9 +129,10 @@ function DashboardContent() {
             table: 'user_profiles',
             filter: `id=eq.${currentUser.id}`
           },
-          (payload) => {
-            console.log('Real-time profile update:', payload.new)
-            setProfile(payload.new as UserProfile)
+          async (payload) => {
+            console.log('Dashboard: Profile update detected, re-fetching...')
+            const data = await getUserProfile(currentUser.id)
+            if (data) setProfile(data)
           }
         )
         .subscribe()
