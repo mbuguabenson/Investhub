@@ -115,6 +115,12 @@ CREATE TABLE payment_webhooks (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Admin check function to avoid RLS recursion
+CREATE OR REPLACE FUNCTION check_is_admin(uid UUID)
+RETURNS BOOLEAN AS $$
+  SELECT is_admin FROM user_profiles WHERE id = uid;
+$$ LANGUAGE sql SECURITY DEFINER;
+
 -- Create indices for better query performance
 CREATE INDEX idx_investments_user_id ON investments(user_id);
 CREATE INDEX idx_investments_status ON investments(status);
@@ -152,27 +158,27 @@ CREATE POLICY "Users can update their own profile" ON user_profiles
   FOR UPDATE USING (auth.uid() = id);
 
 CREATE POLICY "Admins can view all profiles" ON user_profiles
-  FOR SELECT USING (
-    (SELECT is_admin FROM user_profiles WHERE id = auth.uid()) = TRUE
-  );
+  FOR SELECT USING (check_is_admin(auth.uid()));
 
 -- RLS Policies for investments
 CREATE POLICY "Users can view their own investments" ON investments
   FOR SELECT USING (auth.uid() = user_id);
 
 CREATE POLICY "Admins can view all investments" ON investments
-  FOR SELECT USING (
-    (SELECT is_admin FROM user_profiles WHERE id = auth.uid()) = TRUE
-  );
+  FOR SELECT USING (check_is_admin(auth.uid()));
+
+CREATE POLICY "Users can insert their own investments" ON investments
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
 
 -- RLS Policies for transactions
 CREATE POLICY "Users can view their own transactions" ON transactions
   FOR SELECT USING (auth.uid() = user_id);
 
 CREATE POLICY "Admins can view all transactions" ON transactions
-  FOR SELECT USING (
-    (SELECT is_admin FROM user_profiles WHERE id = auth.uid()) = TRUE
-  );
+  FOR SELECT USING (check_is_admin(auth.uid()));
+
+CREATE POLICY "Users can insert their own transactions" ON transactions
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
 
 -- RLS Policies for daily_returns
 CREATE POLICY "Users can view returns for their investments" ON daily_returns
@@ -183,9 +189,7 @@ CREATE POLICY "Users can view returns for their investments" ON daily_returns
   );
 
 CREATE POLICY "Admins can view all returns" ON daily_returns
-  FOR SELECT USING (
-    (SELECT is_admin FROM user_profiles WHERE id = auth.uid()) = TRUE
-  );
+  FOR SELECT USING (check_is_admin(auth.uid()));
 
 -- RLS Policies for withdrawal_requests
 CREATE POLICY "Users can view their own withdrawal requests" ON withdrawal_requests
@@ -195,23 +199,17 @@ CREATE POLICY "Users can insert withdrawal requests" ON withdrawal_requests
   FOR INSERT WITH CHECK (auth.uid() = user_id);
 
 CREATE POLICY "Admins can view all withdrawal requests" ON withdrawal_requests
-  FOR SELECT USING (
-    (SELECT is_admin FROM user_profiles WHERE id = auth.uid()) = TRUE
-  );
+  FOR SELECT USING (check_is_admin(auth.uid()));
 
 CREATE POLICY "Admins can update withdrawal requests" ON withdrawal_requests
-  FOR UPDATE USING (
-    (SELECT is_admin FROM user_profiles WHERE id = auth.uid()) = TRUE
-  );
+  FOR UPDATE USING (check_is_admin(auth.uid()));
 
 -- RLS Policies for investment_plans (public read)
 CREATE POLICY "Anyone can view investment plans" ON investment_plans
   FOR SELECT USING (TRUE);
 
 CREATE POLICY "Admins can manage investment plans" ON investment_plans
-  FOR ALL USING (
-    (SELECT is_admin FROM user_profiles WHERE id = auth.uid()) = TRUE
-  );
+  FOR ALL USING (check_is_admin(auth.uid()));
 
 -- RLS Policies for payment_webhooks (service role only - no user access)
 CREATE POLICY "Service role only for webhooks" ON payment_webhooks

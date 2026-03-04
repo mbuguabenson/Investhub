@@ -136,3 +136,43 @@ export async function getTransactionStatus(
 
   return data; // Contains payment_status_description
 }
+
+export async function submitPayoutRequest(
+  token: string,
+  payoutData: {
+    reference: string;
+    amount: number;
+    phone: string;
+    description: string;
+  },
+) {
+  const payload = {
+    merchant_reference: payoutData.reference,
+    amount: payoutData.amount,
+    currency: "KES",
+    description: payoutData.description,
+    callback_url: `${process.env.NEXT_PUBLIC_APP_URL}/api/payments/withdraw/webhook`,
+    destination_channel: "MPESA", // Default to Mpesa
+    destination_account: payoutData.phone,
+  };
+
+  const response = await fetch(
+    `${PESAPAL_URL}/api/Transactions/SubmitPayoutRequest`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(payload),
+    },
+  );
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.error?.message || "Failed to submit Pesapal payout");
+  }
+
+  return data; // Contains order_tracking_id
+}

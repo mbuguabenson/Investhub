@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabase } from "@/lib/supabase-server";
+import { getAccessToken, submitPayoutRequest } from "@/lib/pesapal";
 
 export async function POST(request: NextRequest) {
   try {
@@ -73,6 +74,30 @@ export async function POST(request: NextRequest) {
       .eq("id", user.id);
 
     if (updateError) throw updateError;
+
+    // --- PROACTIVE PESAPAL PAYOUT INITIATION ---
+    try {
+      const token = await getAccessToken();
+      const payoutResponse = await submitPayoutRequest(token, {
+        reference: `Withdrawal-${withdrawal.id.slice(0, 8)}`,
+        amount: amount,
+        phone: phoneNumber,
+        description: reason || "Wallet Withdrawal",
+      });
+
+      if (payoutResponse?.order_tracking_id) {
+        // Store the tracking ID back in the withdrawal request
+        await supabase
+          .from("withdrawal_requests")
+          .update({ reference: payoutResponse.order_tracking_id })
+          .eq("id", withdrawal.id);
+      }
+    } catch (pesapalError) {
+      // We log but don't fail the request here, since the balance is deducted
+      // and the status is 'pending'. The background cron will retry this.
+      console.error("Pesapal proactive payout failed:", pesapalError);
+    }
+    // ------------------------------------------
 
     return NextResponse.json({ success: true, withdrawalId: withdrawal.id });
   } catch (error: any) {

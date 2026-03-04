@@ -39,6 +39,7 @@ interface WalletContentProps {
   setIsTransferOpen: (o: boolean) => void
   isWithdrawOpen: boolean
   setIsWithdrawOpen: (o: boolean) => void
+  onWithdraw: () => void
 }
 
 function WalletContent({
@@ -51,21 +52,14 @@ function WalletContent({
   isTransferOpen,
   setIsTransferOpen,
   isWithdrawOpen,
-  setIsWithdrawOpen
+  setIsWithdrawOpen,
+  onWithdraw
 }: WalletContentProps) {
   const searchParams = useSearchParams()
   const depositStatus = searchParams.get('status')
 
   const [copied, setCopied] = useState(false)
 
-  useEffect(() => {
-    // Add global listener for withdrawal button in WalletCard
-    (window as any).dispatchWithdrawal = () => setIsWithdrawOpen(true)
-
-    return () => {
-      delete (window as any).dispatchWithdrawal
-    }
-  }, [setIsWithdrawOpen])
 
   useEffect(() => {
     let profileChannel: any
@@ -154,6 +148,7 @@ function WalletContent({
             balance={profile?.account_balance || 0}
             onDeposit={() => setIsDepositOpen(true)}
             onTransfer={() => setIsTransferOpen(true)}
+            onWithdraw={onWithdraw}
           />
 
           <Card className="card-premium border-border/20 p-8 space-y-6">
@@ -392,6 +387,7 @@ export default function WalletPage() {
         setIsTransferOpen={setIsTransferOpen}
         isWithdrawOpen={isWithdrawOpen}
         setIsWithdrawOpen={setIsWithdrawOpen}
+        onWithdraw={() => setIsWithdrawOpen(true)}
       />
     </Suspense>
   )

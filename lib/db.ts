@@ -319,3 +319,217 @@ export async function getPockets(userId: string) {
     return [];
   }
 }
+
+// Admin Operations
+export async function getAdminStats() {
+  if (!isSupabaseConfigured()) return null;
+  const client = supabaseAdmin || supabase;
+
+  try {
+    const [
+      { count: userCount },
+      { data: balanceData },
+      { data: investmentData },
+      { count: pendingWithdrawals },
+    ] = await Promise.all([
+      client.from("user_profiles").select("*", { count: "exact", head: true }),
+      client.from("user_profiles").select("account_balance"),
+      client.from("investments").select("amount").eq("status", "active"),
+      client
+        .from("withdrawal_requests")
+        .select("*", { count: "exact", head: true })
+        .eq("status", "pending"),
+    ]);
+
+    const totalBalance =
+      balanceData?.reduce(
+        (acc, curr) => acc + Number(curr.account_balance),
+        0,
+      ) || 0;
+    const totalActiveInvestments =
+      investmentData?.reduce((acc, curr) => acc + Number(curr.amount), 0) || 0;
+
+    return {
+      userCount: userCount || 0,
+      totalBalance,
+      totalActiveInvestments,
+      pendingWithdrawals: pendingWithdrawals || 0,
+    };
+  } catch (e) {
+    console.error("Error fetching admin stats:", e);
+    return null;
+  }
+}
+
+export async function getAdminRecentTransactions(limit = 10) {
+  if (!isSupabaseConfigured()) return [];
+  const client = supabaseAdmin || supabase;
+
+  try {
+    const { data, error } = await client
+      .from("transactions")
+      .select("*, user_profiles(full_name, username)")
+      .order("created_at", { ascending: false })
+      .limit(limit);
+
+    if (error) throw error;
+    return data || [];
+  } catch (e) {
+    console.error("Error fetching admin transactions:", e);
+    return [];
+  }
+}
+
+export async function getAllWithdrawalRequests() {
+  if (!isSupabaseConfigured()) return [];
+  const client = supabaseAdmin || supabase;
+
+  try {
+    const { data, error } = await client
+      .from("withdrawal_requests")
+      .select("*, user_profiles(full_name, username)")
+      .order("requested_at", { ascending: false });
+
+    if (error) throw error;
+    return data || [];
+  } catch (e) {
+    console.error("Error fetching all withdrawal requests:", e);
+    return [];
+  }
+}
+
+export async function updateWithdrawalStatus(
+  id: string,
+  status: "completed" | "failed" | "rejected",
+  rejectionReason?: string,
+) {
+  if (!isSupabaseConfigured()) return false;
+  const client = supabaseAdmin || supabase;
+
+  try {
+    const { error } = await client
+      .from("withdrawal_requests")
+      .update({
+        status,
+        rejection_reason: rejectionReason,
+        reviewed_at: new Date().toISOString(),
+      })
+      .eq("id", id);
+
+    if (error) throw error;
+
+    // Mirror status update in transactions table if it exists
+    await client
+      .from("transactions")
+      .update({ status })
+      .eq("reference", `Withdrawal: ${id.slice(0, 8)}`);
+
+    return true;
+  } catch (e) {
+    console.error("Error updating withdrawal status:", e);
+    return false;
+  }
+}
+
+export async function getAdminInvestmentPlans() {
+  if (!isSupabaseConfigured()) return [];
+  const client = supabaseAdmin || supabase;
+
+  try {
+    const { data, error } = await client
+      .from("investment_plans")
+      .select("*")
+      .order("minimum_amount", { ascending: true });
+
+    if (error) throw error;
+    return data || [];
+  } catch (e) {
+    console.error("Error fetching all investment plans:", e);
+    return [];
+  }
+}
+
+export async function updateInvestmentPlan(
+  planId: string,
+  planData: Partial<InvestmentPlan>,
+) {
+  if (!isSupabaseConfigured()) return false;
+  const client = supabaseAdmin || supabase;
+
+  try {
+    const { error } = await client
+      .from("investment_plans")
+      .update(planData)
+      .eq("id", planId);
+
+    if (error) throw error;
+    return true;
+  } catch (e) {
+    console.error("Error updating investment plan:", e);
+    return false;
+  }
+}
+
+export async function getAdminPendingDeposits() {
+  if (!isSupabaseConfigured()) return [];
+  const client = supabaseAdmin || supabase;
+
+  try {
+    const { data, error } = await client
+      .from("transactions")
+      .select("*, user_profiles(full_name, username)")
+      .eq("type", "deposit")
+      .eq("status", "pending")
+      .order("created_at", { ascending: false });
+
+    if (error) throw error;
+    return data || [];
+  } catch (e) {
+    console.error("Error fetching pending deposits:", e);
+    return [];
+  }
+}
+
+export async function approveDeposit(transactionId: string) {
+  if (!isSupabaseConfigured()) return false;
+  const client = supabaseAdmin || supabase;
+
+  try {
+    // 1. Get the transaction details
+    const { data: tx, error: txError } = await client
+      .from("transactions")
+      .select("*")
+      .eq("id", transactionId)
+      .single();
+
+    if (txError || !tx) throw txError || new Error("Transaction not found");
+
+    // 2. Update transaction status
+    const { error: updateError } = await client
+      .from("transactions")
+      .update({ status: "completed" })
+      .eq("id", transactionId);
+
+    if (updateError) throw updateError;
+
+    // 3. Update user balance
+    const { data: profile } = await client
+      .from("user_profiles")
+      .select("account_balance")
+      .eq("id", tx.user_id)
+      .single();
+
+    const newBalance =
+      Number(profile?.account_balance || 0) + Number(tx.amount);
+
+    await client
+      .from("user_profiles")
+      .update({ account_balance: newBalance })
+      .eq("id", tx.user_id);
+
+    return true;
+  } catch (e) {
+    console.error("Error approving deposit:", e);
+    return false;
+  }
+}

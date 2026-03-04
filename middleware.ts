@@ -31,22 +31,43 @@ export async function middleware(request: NextRequest) {
     },
   );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  try {
+    const { data } = await supabase.auth.getUser();
+    const user = data?.user;
 
-  // Protect dashboard routes
-  if (request.nextUrl.pathname.startsWith("/dashboard") && !user) {
-    return NextResponse.redirect(new URL("/auth/login", request.url));
-  }
+    // Protect dashboard routes
+    if (request.nextUrl.pathname.startsWith("/dashboard") && !user) {
+      return NextResponse.redirect(new URL("/auth/login", request.url));
+    }
 
-  // Redirect logged in users away from auth pages
-  if (
-    request.nextUrl.pathname.startsWith("/auth") &&
-    user &&
-    !request.nextUrl.pathname.includes("/auth/callback")
-  ) {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
+    // Protect admin routes
+    if (request.nextUrl.pathname.startsWith("/admin")) {
+      if (!user) {
+        return NextResponse.redirect(new URL("/auth/login", request.url));
+      }
+
+      const { data: profile } = await supabase
+        .from("user_profiles")
+        .select("is_admin")
+        .eq("id", user.id)
+        .single();
+
+      if (!profile?.is_admin) {
+        return NextResponse.redirect(new URL("/dashboard", request.url));
+      }
+    }
+
+    // Redirect logged in users away from auth pages
+    if (
+      request.nextUrl.pathname.startsWith("/auth") &&
+      user &&
+      !request.nextUrl.pathname.includes("/auth/callback")
+    ) {
+      return NextResponse.redirect(new URL("/dashboard", request.url));
+    }
+  } catch (error) {
+    console.error("Middleware error:", error);
+    // Continue even if error occurs to avoid blocking the site
   }
 
   return response;
